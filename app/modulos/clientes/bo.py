@@ -1,7 +1,6 @@
-"""Capa BO del módulo clientes: reglas puras."""
+"""Capa BO del módulo clientes: reglas puras (sin DB, sin HTTP)."""
 
 from app.core.excepciones import ReglaDeNegocioViolada
-from app.modulos.clientes.models import Cliente
 
 
 class ClienteBO:
@@ -11,6 +10,6 @@ class ClienteBO:
         if email_ya_registrado:
             raise ReglaDeNegocioViolada("Ya existe un cliente con ese email")
 
-    def validar_baja(self, cliente: Cliente) -> None:
-        if not cliente.activo:
+    def validar_baja(self, activo: bool) -> None:
+        if not activo:
             raise ReglaDeNegocioViolada("El cliente ya está inactivo")

@@ -15,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import obtener_configuracion
 from app.core.database import crear_tablas
+from app.core.eventos import bus_eventos
 from app.core.excepciones import ErrorDeNegocio, manejar_error_de_negocio
 from app.modulos.auth.router import router as auth_router
 from app.modulos.auth.router import router_usuarios, router_vendedores
@@ -22,6 +23,7 @@ from app.modulos.clientes.router import router as clientes_router
 from app.modulos.parametros.router import router as parametros_router
 from app.modulos.productos.router import router as productos_router
 from app.modulos.reporteria.router import router as reporteria_router
+from app.modulos.ventas.eventos import registrar_suscripciones_ventas
 from app.modulos.ventas.router import router as ventas_router
 
 logging.basicConfig(level=logging.INFO)
@@ -68,6 +70,8 @@ def crear_aplicacion() -> FastAPI:
     )
 
     app.add_exception_handler(ErrorDeNegocio, manejar_error_de_negocio)  # type: ignore[arg-type]
+
+    registrar_suscripciones_ventas(bus_eventos)
 
     prefijo = "/api/v1"
     app.include_router(auth_router, prefix=prefijo)

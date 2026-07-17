@@ -1,7 +1,6 @@
-"""Capa BO del módulo ventas: reglas puras."""
+"""Capa BO del módulo ventas: reglas puras (sin DB, sin HTTP)."""
 
 from app.core.excepciones import ReglaDeNegocioViolada
-from app.modulos.ventas.models import Pedido
 
 _TRANSICIONES: dict[str, set[str]] = {
     "borrador": {"confirmado", "cancelado"},
@@ -22,13 +21,13 @@ class VentasBO:
         if cantidad <= 0:
             raise ReglaDeNegocioViolada("La cantidad debe ser mayor a cero")
 
-    def validar_transicion(self, pedido: Pedido, nuevo_estado: str) -> None:
-        if nuevo_estado == pedido.estado:
+    def validar_transicion(self, estado_actual: str, nuevo_estado: str) -> None:
+        if nuevo_estado == estado_actual:
             raise ReglaDeNegocioViolada(f"El pedido ya está en estado {nuevo_estado}")
-        permitidos = _TRANSICIONES.get(pedido.estado, set())
+        permitidos = _TRANSICIONES.get(estado_actual, set())
         if nuevo_estado not in permitidos:
             raise ReglaDeNegocioViolada(
-                f"No se puede pasar de {pedido.estado} a {nuevo_estado}"
+                f"No se puede pasar de {estado_actual} a {nuevo_estado}"
             )
 
     @staticmethod

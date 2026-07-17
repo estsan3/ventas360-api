@@ -1,0 +1,45 @@
+---
+description: Arquitectura modular Ventas360 API (FastAPI). Aplicar al tocar app/, tests/ o AGENTS.md.
+globs:
+  - app/**/*
+  - tests/**/*
+  - AGENTS.md
+alwaysApply: false
+---
+
+# Arquitectura API — Ventas360
+
+Fuente de verdad: `AGENTS.md`. Stack: FastAPI + SQLAlchemy 2.0 async + Pydantic + Poetry. Código en **español**. Prefijo env: `VENTAS360_*`.
+
+## Capas por módulo (`app/modulos/<nombre>/`)
+
+| Archivo | Responsabilidad |
+|---------|-----------------|
+| `router.py` | HTTP fino: DTO → service → DTO. `operation_id` snake_case. |
+| `service.py` | Casos de uso; **único** lugar de `commit()`. |
+| `bo.py` | Reglas puras: sin DB, sin HTTP, sin modelos ORM. |
+| `dao.py` | Persistencia: `flush()`, nunca `commit()`. |
+| `models.py` | ORM `Mapped[...]`, tablas `<modulo>_...`. |
+| `schemas.py` | DTOs `*Request` / `*Response`. |
+| `contrato.py` | Protocol + implementación local para otros módulos. |
+| `eventos.py` | Suscripciones al bus; registrar en `main.py`. |
+| `puerto.py` + `adaptadores/` | Integraciones externas. |
+
+## Prohibido
+
+- Importar `service` / `bo` / `dao` / `models` de otro módulo (solo `contrato.py`).
+- ForeignKey entre módulos distintos (IDs débiles String + validación por contrato).
+- Lógica de negocio en `app/core/`, SQL en routers, HTTP/ORM en BO.
+- Llamadas externas directas desde service (usar puerto/adaptador).
+
+## Errores y eventos
+
+- Excepciones: `RecursoNoEncontrado`, `ReglaDeNegocioViolada`, `NoAutenticado`, `NoAutorizado`.
+- Eventos: `EventoDominio` con nombre `modulo.entidad.accion` (ej. `ventas.pedido.creado`).
+
+## Forma de trabajar
+
+1. Leer módulos vecinos antes de escribir.
+2. Si toca arquitectura: proponer diseño en 2–4 bullets.
+3. Implementar por capas; tests `test_bo_<modulo>.py` + API.
+4. Verificar con `poetry run ruff check . --fix` y `poetry run pytest`.

@@ -30,7 +30,11 @@ class AuthService:
     async def login(self, datos: LoginRequest) -> LoginResponse:
         """Valida credenciales y emite un JWT con la identidad del usuario."""
         usuario = await self._dao.buscar_por_email(datos.email)
-        usuario = self._bo.validar_credenciales(usuario, datos.password)
+        self._bo.validar_credenciales(
+            usuario.password_hash if usuario else None,
+            datos.password,
+        )
+        assert usuario is not None  # garantizado por validar_credenciales
 
         # Los claims extra (email, rol) permiten autorizar sin ir a la base.
         token = crear_token_acceso(

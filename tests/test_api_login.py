@@ -28,3 +28,19 @@ async def test_login_credenciales_invalidas(cliente):
         json={"email": EMAIL_TEST, "password": "incorrecta"},
     )
     assert respuesta.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_login_setea_cookie_y_me_con_cookie(cliente, token_admin):
+    """Login deja cookie httpOnly; /me acepta la cookie sin Bearer."""
+    assert token_admin
+    login = await cliente.post(
+        "/api/v1/auth/login",
+        json={"email": EMAIL_TEST, "password": PASSWORD_TEST},
+    )
+    assert login.status_code == 200
+    assert "ventas360_access_token" in login.cookies
+
+    me = await cliente.get("/api/v1/auth/me")
+    assert me.status_code == 200
+    assert me.json()["email"] == EMAIL_TEST

@@ -30,8 +30,8 @@ class Configuracion(BaseSettings):
     jwt_algoritmo: str = "HS256"
     jwt_expiracion_minutos: int = 480
 
-    # Orígenes permitidos para CORS, separados por coma.
-    cors_origins: str = "http://localhost:4200"
+    # Orígenes permitidos para CORS, separados por coma (credentials → nunca *).
+    cors_origins: str = "http://localhost:4200,http://localhost:4201"
 
     # Sembrar datos de demo al iniciar si la base está vacía (solo dev).
     seed_al_iniciar: bool = True

@@ -4,6 +4,7 @@ from datetime import date
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.eventos import EventoDominio, bus_eventos
 from app.core.excepciones import RecursoNoEncontrado, ReglaDeNegocioViolada
 from app.modulos.clientes.contrato import ClientesLocal, ContratoClientes
 from app.modulos.productos.contrato import ContratoProductos, ProductosLocal
@@ -74,15 +75,32 @@ class VentasService:
         await self._dao.guardar(pedido)
         await self._sesion.commit()
         await self._sesion.refresh(pedido, attribute_names=["lineas"])
+        await bus_eventos.publicar(
+            EventoDominio(
+                nombre="ventas.pedido.creado",
+                datos={"pedido_id": pedido.id, "cliente_id": pedido.cliente_id},
+            )
+        )
         return PedidoResponse.model_validate(pedido)
 
     async def cambiar_estado(
         self, pedido_id: str, datos: CambiarEstadoPedidoRequest
     ) -> PedidoResponse:
         pedido = await self._buscar_o_fallar(pedido_id)
-        self._bo.validar_transicion(pedido, datos.estado)
+        self._bo.validar_transicion(pedido.estado, datos.estado)
+        estado_anterior = pedido.estado
         pedido.estado = datos.estado
         await self._sesion.commit()
+        await bus_eventos.publicar(
+            EventoDominio(
+                nombre="ventas.pedido.estado_cambiado",
+                datos={
+                    "pedido_id": pedido.id,
+                    "estado_anterior": estado_anterior,
+                    "estado": pedido.estado,
+                },
+            )
+        )
         return PedidoResponse.model_validate(pedido)
 
     async def _buscar_o_fallar(self, pedido_id: str) -> Pedido:

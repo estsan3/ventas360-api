@@ -9,7 +9,8 @@ Cada subpaquete es un módulo autónomo con la misma estructura interna:
     ├── bo.py         → capa BO (Business Object): reglas de negocio puras
     ├── dao.py        → capa DAO: acceso a datos (SQLAlchemy)
     ├── models.py     → modelos ORM (tablas con prefijo del módulo)
-    └── contrato.py   → interfaz pública que otros módulos pueden consumir
+    ├── contrato.py   → interfaz pública que otros módulos pueden consumir
+    └── eventos.py    → suscripciones al bus (opcional)
 
 Reglas de dependencia (para poder extraer módulos como microservicios):
 
@@ -17,4 +18,5 @@ Reglas de dependencia (para poder extraer módulos como microservicios):
 2. Si necesita datos de otro módulo, usa su `contrato.py` (interfaz).
 3. Para notificar sin acoplarse, publica eventos en `core.eventos`.
 4. `core` no importa módulos (salvo el registro de modelos en database).
+5. Los BO no importan modelos ORM: solo valores primitivos / estructuras simples.
 """

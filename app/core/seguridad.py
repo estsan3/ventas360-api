@@ -13,6 +13,9 @@ import jwt
 from app.core.config import obtener_configuracion
 from app.core.excepciones import NoAutenticado
 
+# Cookie httpOnly usada por el front Angular (SameSite=Lax).
+NOMBRE_COOKIE_ACCESO = "ventas360_access_token"
+
 
 def hashear_password(password: str) -> str:
     """Devuelve el hash bcrypt de una contraseña en texto plano."""

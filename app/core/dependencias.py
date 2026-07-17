@@ -4,16 +4,18 @@ El usuario autenticado se reconstruye SOLO desde los claims del JWT
 (sin ir a la base de datos), de modo que cualquier módulo —incluso
 extraído como microservicio— pueda autorizar requests con solo conocer
 el secreto de firma.
+
+Soporta Bearer (API/MCP/tests) y cookie httpOnly (front Angular).
 """
 
 from dataclasses import dataclass
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.core.excepciones import NoAutenticado, NoAutorizado
-from app.core.seguridad import decodificar_token
+from app.core.seguridad import NOMBRE_COOKIE_ACCESO, decodificar_token
 
 # `auto_error=False` para devolver nuestro error unificado en vez del 403 default.
 _esquema_bearer = HTTPBearer(auto_error=False)
@@ -28,16 +30,27 @@ class UsuarioActual:
     rol: str
 
 
+def _token_desde_request(
+    request: Request,
+    credenciales: HTTPAuthorizationCredentials | None,
+) -> str:
+    if credenciales is not None and credenciales.credentials:
+        return credenciales.credentials
+    cookie = request.cookies.get(NOMBRE_COOKIE_ACCESO)
+    if cookie:
+        return cookie
+    raise NoAutenticado("Falta el token de autenticación")
+
+
 def obtener_usuario_actual(
+    request: Request,
     credenciales: Annotated[
         HTTPAuthorizationCredentials | None, Depends(_esquema_bearer)
     ],
 ) -> UsuarioActual:
-    """Dependencia: exige un Bearer token válido y devuelve la identidad."""
-    if credenciales is None:
-        raise NoAutenticado("Falta el token de autenticación")
-
-    claims = decodificar_token(credenciales.credentials)
+    """Dependencia: exige Bearer o cookie httpOnly válida."""
+    token = _token_desde_request(request, credenciales)
+    claims = decodificar_token(token)
     return UsuarioActual(
         id=claims.get("sub", ""),
         email=claims.get("email", ""),

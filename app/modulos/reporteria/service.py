@@ -7,7 +7,7 @@ módulos a través de sus contratos públicos. No tiene DAO ni BO propios.
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modulos.clientes.contrato import ClientesLocal, ContratoClientes
-from app.modulos.parametros.service import ParametrosService
+from app.modulos.parametros.contrato import ContratoParametros, ParametrosLocal
 from app.modulos.productos.contrato import ContratoProductos, ProductosLocal
 from app.modulos.reporteria.schemas import KpisResponse
 from app.modulos.ventas.contrato import ContratoVentas, VentasLocal
@@ -22,11 +22,12 @@ class ReporteriaService:
         clientes: ContratoClientes | None = None,
         productos: ContratoProductos | None = None,
         ventas: ContratoVentas | None = None,
+        parametros: ContratoParametros | None = None,
     ) -> None:
         self._clientes = clientes or ClientesLocal(sesion)
         self._productos = productos or ProductosLocal(sesion)
         self._ventas = ventas or VentasLocal(sesion)
-        self._parametros = ParametrosService(sesion)
+        self._parametros = parametros or ParametrosLocal(sesion)
 
     async def obtener_kpis(self) -> KpisResponse:
         """Combina métricas de clientes, productos y ventas del mes."""

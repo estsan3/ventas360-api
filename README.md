@@ -39,6 +39,13 @@ Reglas clave: commit solo en service, IDs débiles entre módulos, tablas con pr
 
 Ver `AGENTS.md` para la guía completa de convenciones.
 
+## Análisis WinSales → módulos
+
+Documentación derivada de `WINSALES.mdb` (inventario de módulos y priorización):
+
+- [Validación de uso real (taller / contabilidad / OC)](docs/winsales-validacion-modulos.md)
+- [Plan Fase A sobre Ventas360](docs/winsales-fase-a-ventas360.md)
+
 ## MCP (agentes IA)
 
 ```bash

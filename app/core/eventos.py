@@ -26,7 +26,7 @@ class EventoDominio:
     """Evento inmutable que describe algo que YA ocurrió en el dominio.
 
     El nombre sigue la convención `modulo.entidad.accion`,
-    ej: `despachos.viaje.completado`.
+    ej: `ventas.pedido.creado`.
     """
 
     nombre: str

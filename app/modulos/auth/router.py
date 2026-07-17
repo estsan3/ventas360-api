@@ -2,11 +2,13 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import obtener_configuracion
 from app.core.database import obtener_sesion
 from app.core.dependencias import UsuarioActual, obtener_usuario_actual, requerir_rol
+from app.core.seguridad import NOMBRE_COOKIE_ACCESO
 from app.modulos.auth.schemas import (
     CrearUsuarioRequest,
     CrearVendedorRequest,
@@ -30,10 +32,37 @@ router_vendedores = APIRouter(prefix="/catalogos/vendedores", tags=["Usuarios"])
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
 
 
+def _setear_cookie_acceso(response: Response, token: str) -> None:
+    config = obtener_configuracion()
+    response.set_cookie(
+        key=NOMBRE_COOKIE_ACCESO,
+        value=token,
+        httponly=True,
+        samesite="lax",
+        secure=config.es_produccion,
+        max_age=config.jwt_expiracion_minutos * 60,
+        path="/",
+    )
+
+
+def _borrar_cookie_acceso(response: Response) -> None:
+    config = obtener_configuracion()
+    response.delete_cookie(
+        key=NOMBRE_COOKIE_ACCESO,
+        path="/",
+        samesite="lax",
+        secure=config.es_produccion,
+    )
+
+
 @router.post("/login", response_model=LoginResponse, operation_id="login")
-async def login(datos: LoginRequest, sesion: Sesion) -> LoginResponse:
-    """Inicia sesión y devuelve un token JWT junto con los datos del usuario."""
-    return await AuthService(sesion).login(datos)
+async def login(
+    datos: LoginRequest, sesion: Sesion, response: Response
+) -> LoginResponse:
+    """Inicia sesión: JWT en cookie httpOnly (+ body para clientes API/MCP)."""
+    resultado = await AuthService(sesion).login(datos)
+    _setear_cookie_acceso(response, resultado.access_token)
+    return resultado
 
 
 @router.get("/me", response_model=UsuarioResponse, operation_id="obtener_perfil")
@@ -46,13 +75,9 @@ async def perfil(
 
 
 @router.post("/logout", status_code=204, operation_id="logout")
-async def logout() -> None:
-    """Cierre de sesión.
-
-    Con JWT sin estado no hay nada que invalidar en el servidor: el front
-    descarta el token. El endpoint existe para que el flujo del front sea
-    explícito y para poder agregar lista de revocación en el futuro.
-    """
+async def logout(response: Response) -> None:
+    """Cierra sesión borrando la cookie httpOnly."""
+    _borrar_cookie_acceso(response)
     return None
 
 

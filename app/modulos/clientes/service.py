@@ -61,7 +61,7 @@ class ClientesService:
 
     async def desactivar(self, cliente_id: str) -> ClienteResponse:
         cliente = await self._buscar_o_fallar(cliente_id)
-        self._bo.validar_baja(cliente)
+        self._bo.validar_baja(cliente.activo)
         cliente.activo = False
         await self._sesion.commit()
         return ClienteResponse.model_validate(cliente)
