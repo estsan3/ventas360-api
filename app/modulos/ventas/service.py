@@ -45,8 +45,10 @@ class VentasService:
         self._parametros = parametros or ParametrosLocal(sesion)
         self._cxc = cxc or CxcLocal(sesion)
 
-    async def listar(self, tipo: str | None = None) -> list[PedidoResponse]:
-        pedidos = await self._dao.listar(tipo=tipo)
+    async def listar(
+        self, tipo: str | None = None, cliente_id: str | None = None
+    ) -> list[PedidoResponse]:
+        pedidos = await self._dao.listar(tipo=tipo, cliente_id=cliente_id)
         return [PedidoResponse.model_validate(p) for p in pedidos]
 
     async def obtener(self, pedido_id: str) -> PedidoResponse:
@@ -144,6 +146,8 @@ class VentasService:
             )
 
         remito.estado = "confirmado"
+        # El remito entregado ya genera deuda en CxC (luego se factura sin duplicar).
+        await self._imputar_comprobante_en_cxc(remito, referencia_tipo="remito")
         await self._sesion.commit()
         await self._sesion.refresh(remito, attribute_names=["lineas"])
         await bus_eventos.publicar(
@@ -153,13 +157,18 @@ class VentasService:
                     "comprobante_id": remito.id,
                     "deposito_id": remito.deposito_id,
                     "cliente_id": remito.cliente_id,
+                    "total": remito.total,
                 },
             )
         )
         return PedidoResponse.model_validate(remito)
 
     async def convertir_remito_a_factura(self, remito_id: str) -> PedidoResponse:
-        """Genera factura desde remito confirmado y marca el remito facturado."""
+        """Genera factura desde remito confirmado y marca el remito facturado.
+
+        La deuda ya se imputó al confirmar el remito. Solo se imputa la factura
+        si el remito no tiene movimiento CxC (datos legacy).
+        """
         remito = await self._buscar_o_fallar(remito_id)
         self._bo.validar_conversion_a_factura(remito.tipo, remito.estado)
 
@@ -194,7 +203,9 @@ class VentasService:
         )
         remito.estado = "facturado"
         await self._dao.guardar(factura)
-        await self._imputar_factura_en_cxc(factura)
+        remito_ya_en_cxc = await self._cxc.existe_referencia("remito", remito.id)
+        if not remito_ya_en_cxc:
+            await self._imputar_comprobante_en_cxc(factura, referencia_tipo="factura")
         await self._sesion.commit()
         await self._sesion.refresh(factura, attribute_names=["lineas"])
         await bus_eventos.publicar(
@@ -211,14 +222,22 @@ class VentasService:
         return PedidoResponse.model_validate(factura)
 
     async def _imputar_factura_en_cxc(self, factura: Pedido) -> None:
+        """Registra el debe de una factura (idempotente por referencia)."""
+        await self._imputar_comprobante_en_cxc(factura, referencia_tipo="factura")
+
+    async def _imputar_comprobante_en_cxc(
+        self, comprobante: Pedido, *, referencia_tipo: str
+    ) -> None:
         """Registra el debe en cuenta corriente (idempotente por referencia)."""
+        etiqueta = "Remito" if referencia_tipo == "remito" else "Factura"
+        numero = (comprobante.numero or "").strip() or comprobante.id[:8]
         await self._cxc.registrar_debe(
-            cliente_id=factura.cliente_id,
-            monto=factura.total,
-            referencia_tipo="factura",
-            referencia_id=factura.id,
-            concepto=f"Factura {factura.id}",
-            fecha=factura.fecha,
+            cliente_id=comprobante.cliente_id,
+            monto=comprobante.total,
+            referencia_tipo=referencia_tipo,
+            referencia_id=comprobante.id,
+            concepto=f"{etiqueta} {numero}",
+            fecha=comprobante.fecha,
         )
 
     async def _armar_lineas(

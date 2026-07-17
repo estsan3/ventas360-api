@@ -62,8 +62,10 @@ class CxcDAO:
         debe, haber = resultado.one()
         return float(debe), float(haber)
 
-    async def saldos_agrupados(self) -> list[tuple[str, float, float]]:
-        """Lista (cliente_id, debe, haber) con movimiento."""
+    async def saldos_agrupados(
+        self,
+    ) -> list[tuple[str, float, float, object | None, object | None]]:
+        """Lista (cliente_id, debe, haber, fecha_ultimo, fecha_debe_mas_antigua)."""
         resultado = await self._sesion.execute(
             select(
                 MovimientoCxc.cliente_id,
@@ -85,6 +87,15 @@ class CxcDAO:
                     ),
                     0.0,
                 ),
+                func.max(MovimientoCxc.fecha),
+                func.min(
+                    case(
+                        (MovimientoCxc.tipo == "debe", MovimientoCxc.fecha),
+                        else_=None,
+                    )
+                ),
             ).group_by(MovimientoCxc.cliente_id)
         )
-        return [(str(r[0]), float(r[1]), float(r[2])) for r in resultado.all()]
+        return [
+            (str(r[0]), float(r[1]), float(r[2]), r[3], r[4]) for r in resultado.all()
+        ]

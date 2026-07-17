@@ -2,7 +2,7 @@
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.excepciones import RecursoNoEncontrado
+from app.core.excepciones import RecursoNoEncontrado, ReglaDeNegocioViolada
 from app.modulos.auth.contrato import AuthLocal, ContratoAuth
 from app.modulos.clientes.bo import ClienteBO
 from app.modulos.clientes.dao import ClienteDAO
@@ -13,6 +13,7 @@ from app.modulos.clientes.schemas import (
     ClientesPaginaResponse,
     CrearClienteRequest,
 )
+from app.modulos.zonas.contrato import ContratoZonas, ZonasLocal
 
 
 class ClientesService:
@@ -22,11 +23,13 @@ class ClientesService:
         self,
         sesion: AsyncSession,
         auth: ContratoAuth | None = None,
+        zonas: ContratoZonas | None = None,
     ) -> None:
         self._sesion = sesion
         self._dao = ClienteDAO(sesion)
         self._bo = ClienteBO()
         self._auth = auth or AuthLocal(sesion)
+        self._zonas = zonas or ZonasLocal(sesion)
 
     async def listar(
         self,
@@ -57,6 +60,7 @@ class ClientesService:
             datos.cuit, datos.condicion_iva, datos.limite_credito
         )
         await self._validar_vendedor(datos.vendedor_id)
+        await self._validar_zona(datos.zona_id)
 
         cliente = Cliente(
             nombre=datos.nombre,
@@ -112,6 +116,7 @@ class ClientesService:
         if datos.limite_credito is not None:
             cliente.limite_credito = datos.limite_credito
         if datos.zona_id is not None:
+            await self._validar_zona(datos.zona_id)
             cliente.zona_id = datos.zona_id
         if datos.bloqueado is not None:
             cliente.bloqueado = datos.bloqueado
@@ -133,6 +138,12 @@ class ClientesService:
             return
         existe = await self._auth.existe_usuario(vendedor_id)
         self._bo.validar_vendedor(vendedor_id, existe)
+
+    async def _validar_zona(self, zona_id: str | None) -> None:
+        if not zona_id:
+            return
+        if not await self._zonas.existe_zona(zona_id):
+            raise ReglaDeNegocioViolada("La zona indicada no existe o está inactiva")
 
     async def _buscar_o_fallar(self, cliente_id: str) -> Cliente:
         cliente = await self._dao.buscar_por_id(cliente_id)

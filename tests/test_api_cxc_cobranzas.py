@@ -1,4 +1,4 @@
-"""Integración A6–A7: factura → CxC → recibo reduce saldo."""
+"""Integración A6–A7: remito → CxC → factura sin duplicar → recibo reduce saldo."""
 
 import pytest
 
@@ -65,6 +65,13 @@ async def _setup(cliente, auth_headers) -> dict[str, str]:
     )
     assert conf.status_code == 200, conf.text
 
+    saldo_post_remito = await cliente.get(
+        f"/api/v1/cxc/clientes/{cliente_id}/saldo",
+        headers=auth_headers,
+    )
+    assert saldo_post_remito.status_code == 200, saldo_post_remito.text
+    assert saldo_post_remito.json()["saldo"] == 242.0
+
     factura = await cliente.post(
         f"/api/v1/ventas/pedidos/{remito_id}/facturar",
         headers=auth_headers,
@@ -72,13 +79,16 @@ async def _setup(cliente, auth_headers) -> dict[str, str]:
     assert factura.status_code == 200, factura.text
     return {
         "cliente_id": cliente_id,
+        "remito_id": remito_id,
         "factura_id": factura.json()["id"],
         "total": str(factura.json()["total"]),
     }
 
 
 @pytest.mark.asyncio
-async def test_factura_imputa_cxc_y_recibo_cancela(cliente, auth_headers) -> None:
+async def test_remito_imputa_cxc_factura_no_duplica_y_recibo_cancela(
+    cliente, auth_headers
+) -> None:
     ids = await _setup(cliente, auth_headers)
     total = float(ids["total"])
 
@@ -87,7 +97,18 @@ async def test_factura_imputa_cxc_y_recibo_cancela(cliente, auth_headers) -> Non
         headers=auth_headers,
     )
     assert saldo.status_code == 200, saldo.text
+    # Facturar no debe duplicar la deuda ya cargada por el remito.
     assert saldo.json()["saldo"] == total
+
+    estado = await cliente.get(
+        f"/api/v1/cxc/clientes/{ids['cliente_id']}/estado-cuenta",
+        headers=auth_headers,
+    )
+    assert estado.status_code == 200
+    deudas = [m for m in estado.json()["movimientos"] if m["tipo"] == "debe"]
+    assert len(deudas) == 1
+    assert deudas[0]["referencia_tipo"] == "remito"
+    assert deudas[0]["referencia_id"] == ids["remito_id"]
 
     recibo = await cliente.post(
         "/api/v1/cobranzas/recibos",
@@ -95,7 +116,7 @@ async def test_factura_imputa_cxc_y_recibo_cancela(cliente, auth_headers) -> Non
         json={
             "cliente_id": ids["cliente_id"],
             "monto": total,
-            "medio": "transferencia",
+            "medio": "efectivo",
             "imputaciones": [
                 {"factura_id": ids["factura_id"], "monto": total},
             ],
@@ -110,11 +131,11 @@ async def test_factura_imputa_cxc_y_recibo_cancela(cliente, auth_headers) -> Non
     )
     assert saldo_final.json()["saldo"] == 0.0
 
-    estado = await cliente.get(
+    estado_final = await cliente.get(
         f"/api/v1/cxc/clientes/{ids['cliente_id']}/estado-cuenta",
         headers=auth_headers,
     )
-    assert estado.status_code == 200
-    tipos = {m["tipo"] for m in estado.json()["movimientos"]}
+    assert estado_final.status_code == 200
+    tipos = {m["tipo"] for m in estado_final.json()["movimientos"]}
     assert "debe" in tipos
     assert "haber" in tipos

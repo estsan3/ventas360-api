@@ -25,6 +25,12 @@ def test_transicion_pedido_ok(bo: VentasBO) -> None:
     bo.validar_transicion("pedido", "borrador", "confirmado")
 
 
+def test_transicion_presupuesto_ok(bo: VentasBO) -> None:
+    bo.validar_transicion("presupuesto", "borrador", "vigente")
+    bo.validar_transicion("presupuesto", "vigente", "aceptado")
+    bo.validar_transicion("presupuesto", "aceptado", "convertido")
+
+
 def test_transicion_remito_a_facturado(bo: VentasBO) -> None:
     bo.validar_transicion("remito", "confirmado", "facturado")
 

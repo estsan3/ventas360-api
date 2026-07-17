@@ -1,4 +1,4 @@
-"""Capa API del módulo auth: endpoints HTTP. Sin lógica de negocio."""
+"""Capa API del m?dulo auth: endpoints HTTP. Sin l?gica de negocio."""
 
 from typing import Annotated
 
@@ -18,17 +18,17 @@ from app.modulos.auth.schemas import (
 )
 from app.modulos.auth.service import AuthService
 
-router = APIRouter(prefix="/auth", tags=["Autenticación"])
+router = APIRouter(prefix="/auth", tags=["Autenticaci?n"])
 
-# Router aparte para la gestión de usuarios: el front la consume en /usuarios.
+# Router aparte para la gesti?n de usuarios: el front la consume en /usuarios.
 router_usuarios = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
 # Los vendedores son usuarios, pero el front los gestiona desde la pantalla
-# de catálogos (POST/DELETE /catalogos/vendedores). La ruta vive acá porque
-# la entidad pertenece a auth; catálogos nunca toca usuarios.
+# de cat?logos (POST/DELETE /catalogos/vendedores). La ruta vive ac? porque
+# la entidad pertenece a auth; cat?logos nunca toca usuarios.
 router_vendedores = APIRouter(prefix="/catalogos/vendedores", tags=["Usuarios"])
 
-# Alias para inyectar la sesión de base de datos en cada endpoint.
+# Alias para inyectar la sesi?n de base de datos en cada endpoint.
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
 
 
@@ -59,7 +59,7 @@ def _borrar_cookie_acceso(response: Response) -> None:
 async def login(
     datos: LoginRequest, sesion: Sesion, response: Response
 ) -> LoginResponse:
-    """Inicia sesión: JWT en cookie httpOnly (+ body para clientes API/MCP)."""
+    """Inicia sesi?n: JWT en cookie httpOnly (+ body para clientes API/MCP)."""
     resultado = await AuthService(sesion).login(datos)
     _setear_cookie_acceso(response, resultado.access_token)
     return resultado
@@ -70,13 +70,13 @@ async def perfil(
     usuario: Annotated[UsuarioActual, Depends(obtener_usuario_actual)],
     sesion: Sesion,
 ) -> UsuarioResponse:
-    """Devuelve el perfil del usuario autenticado (según el token)."""
+    """Devuelve el perfil del usuario autenticado (seg?n el token)."""
     return await AuthService(sesion).obtener_usuario(usuario.id)
 
 
 @router.post("/logout", status_code=204, operation_id="logout")
 async def logout(response: Response) -> None:
-    """Cierra sesión borrando la cookie httpOnly."""
+    """Cierra sesi?n borrando la cookie httpOnly."""
     _borrar_cookie_acceso(response)
     return None
 
@@ -119,6 +119,16 @@ async def eliminar_usuario(
     await AuthService(sesion).eliminar_usuario(usuario_id, solicitante_id=usuario.id)
 
 
+@router_vendedores.get(
+    "",
+    response_model=list[UsuarioResponse],
+    operation_id="listar_vendedores",
+)
+async def listar_vendedores(sesion: Sesion) -> list[UsuarioResponse]:
+    """Lista vendedores activos (usuarios con rol vendedor)."""
+    return await AuthService(sesion).listar_vendedores()
+
+
 @router_vendedores.post(
     "",
     response_model=UsuarioResponse,
@@ -127,7 +137,7 @@ async def eliminar_usuario(
     operation_id="crear_vendedor",
 )
 async def crear_vendedor(datos: CrearVendedorRequest, sesion: Sesion) -> UsuarioResponse:
-    """Alta rápida de vendedor desde catálogos. Solo administradores."""
+    """Alta r?pida de vendedor desde cat?logos. Solo administradores."""
     return await AuthService(sesion).crear_vendedor(datos.nombre)
 
 

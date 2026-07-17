@@ -56,14 +56,17 @@ class CobranzasService:
             raise ReglaDeNegocioViolada("Cliente inexistente o inactivo")
 
         for item in datos.imputaciones:
-            factura = await self._ventas.obtener_factura(item.factura_id)
-            if factura is None:
+            comprobante = await self._ventas.obtener_comprobante_cobrable(
+                item.factura_id
+            )
+            if comprobante is None:
                 raise ReglaDeNegocioViolada(
-                    f"Factura inexistente o no confirmada: {item.factura_id}"
+                    "Comprobante inexistente o no cobrable "
+                    f"(remito/factura): {item.factura_id}"
                 )
-            if factura.cliente_id != datos.cliente_id:
+            if comprobante.cliente_id != datos.cliente_id:
                 raise ReglaDeNegocioViolada(
-                    "La factura no pertenece al cliente del recibo"
+                    "El comprobante no pertenece al cliente del recibo"
                 )
 
         fecha = datos.fecha or date.today()

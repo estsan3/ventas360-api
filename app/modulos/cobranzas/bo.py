@@ -14,7 +14,9 @@ class CobranzasBO:
         if monto <= 0:
             raise ReglaDeNegocioViolada("El monto del recibo debe ser mayor a cero")
         if not imputaciones:
-            raise ReglaDeNegocioViolada("El recibo debe imputar al menos una factura")
+            raise ReglaDeNegocioViolada(
+                "El recibo debe imputar al menos un comprobante (remito o factura)"
+            )
         if any(m <= 0 for m in imputaciones):
             raise ReglaDeNegocioViolada("Cada imputación debe ser mayor a cero")
         suma = round(sum(imputaciones), 2)

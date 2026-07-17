@@ -19,6 +19,10 @@ class CrearDepositoRequest(BaseModel):
     nombre: str = Field(min_length=1, max_length=120)
 
 
+class ActualizarDepositoRequest(BaseModel):
+    nombre: str | None = Field(default=None, min_length=1, max_length=120)
+
+
 class SaldoResponse(BaseModel):
     id: str
     articulo_id: str
@@ -26,6 +30,18 @@ class SaldoResponse(BaseModel):
     cantidad: int
 
     model_config = {"from_attributes": True}
+
+
+class InventarioItemResponse(BaseModel):
+    """Fila de inventario de un depósito (catálogo + saldo real)."""
+
+    articulo_id: str
+    sku: str
+    nombre: str
+    deposito_id: str
+    cantidad: int
+    costo: float
+    precio: float
 
 
 class AjusteStockRequest(BaseModel):

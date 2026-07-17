@@ -26,10 +26,13 @@ Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
 @router.get("/pedidos", response_model=list[PedidoResponse], operation_id="listar_pedidos")
 async def listar_pedidos(
     sesion: Sesion,
-    tipo: Literal["pedido", "remito", "factura"] | None = Query(default=None),
+    tipo: Literal["presupuesto", "pedido", "remito", "factura"] | None = Query(
+        default=None
+    ),
+    cliente_id: str | None = Query(default=None, max_length=36),
 ) -> list[PedidoResponse]:
-    """Lista comprobantes (opcionalmente filtrados por tipo)."""
-    return await VentasService(sesion).listar(tipo=tipo)
+    """Lista comprobantes (opcionalmente filtrados por tipo y cliente)."""
+    return await VentasService(sesion).listar(tipo=tipo, cliente_id=cliente_id)
 
 
 @router.get(

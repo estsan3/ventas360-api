@@ -34,6 +34,7 @@ from app.modulos.reporteria.router import router as reporteria_router
 from app.modulos.stock.router import router as stock_router
 from app.modulos.ventas.eventos import registrar_suscripciones_ventas
 from app.modulos.ventas.router import router as ventas_router
+from app.modulos.zonas.router import router as zonas_router
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -86,6 +87,7 @@ def crear_aplicacion() -> FastAPI:
     app.include_router(router_usuarios, prefix=prefijo)
     app.include_router(router_vendedores, prefix=prefijo)
     app.include_router(clientes_router, prefix=prefijo)
+    app.include_router(zonas_router, prefix=prefijo)
     app.include_router(productos_router, prefix=prefijo)
     app.include_router(precios_router, prefix=prefijo)
     app.include_router(stock_router, prefix=prefijo)

@@ -69,6 +69,10 @@ class AuthService:
         usuarios = await self._dao.listar()
         return [UsuarioResponse.model_validate(u) for u in usuarios]
 
+    async def listar_vendedores(self) -> list[UsuarioResponse]:
+        usuarios = await self._dao.listar_por_rol("vendedor")
+        return [UsuarioResponse.model_validate(u) for u in usuarios]
+
     async def crear_vendedor(self, nombre: str) -> UsuarioResponse:
         """Alta rápida de vendedor (desde catálogos del front).
 

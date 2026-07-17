@@ -58,6 +58,10 @@ class ContratoVentas(Protocol):
 
     async def obtener_factura(self, factura_id: str) -> FacturaResumen | None: ...
 
+    async def obtener_comprobante_cobrable(
+        self, comprobante_id: str
+    ) -> FacturaResumen | None: ...
+
 
 class VentasLocal:
     """Implementación local del contrato (mismo proceso, misma base)."""
@@ -113,3 +117,29 @@ class VentasLocal:
             total=comprobante.total,
             estado=comprobante.estado,
         )
+
+    async def obtener_comprobante_cobrable(
+        self, comprobante_id: str
+    ) -> FacturaResumen | None:
+        """Factura confirmada o remito confirmado/facturado (deuda en CxC)."""
+        comprobante = await self._dao.buscar_por_id(comprobante_id)
+        if comprobante is None:
+            return None
+        if comprobante.tipo == "factura" and comprobante.estado == "confirmado":
+            return FacturaResumen(
+                id=comprobante.id,
+                cliente_id=comprobante.cliente_id,
+                total=comprobante.total,
+                estado=comprobante.estado,
+            )
+        if comprobante.tipo == "remito" and comprobante.estado in (
+            "confirmado",
+            "facturado",
+        ):
+            return FacturaResumen(
+                id=comprobante.id,
+                cliente_id=comprobante.cliente_id,
+                total=comprobante.total,
+                estado=comprobante.estado,
+            )
+        return None

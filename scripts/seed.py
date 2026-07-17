@@ -22,9 +22,25 @@ from app.modulos.productos.models import Producto
 from app.modulos.proveedores.models import Proveedor
 from app.modulos.stock.models import Deposito, SaldoStock
 from app.modulos.ventas.models import LineaPedido, Pedido
+from app.modulos.zonas.models import Zona
 
 EMAIL_DEMO = "admin@ventas360.com"
 PASSWORD_DEMO = "demo12345"
+
+
+async def _asegurar_zonas_demo(sesion) -> None:
+    """Catálogo de zonas aunque el seed principal ya haya corrido."""
+    existente = await sesion.get(Zona, "zona-1")
+    if existente is not None:
+        return
+    sesion.add_all(
+        [
+            Zona(id="zona-1", nombre="Centro", codigo="CENTRO"),
+            Zona(id="zona-2", nombre="Norte", codigo="NORTE"),
+            Zona(id="zona-3", nombre="Rural", codigo="RURAL"),
+        ]
+    )
+    await sesion.commit()
 
 
 async def _asegurar_proveedores_demo(sesion) -> None:
@@ -75,11 +91,27 @@ async def _asegurar_tesoreria_demo(sesion) -> None:
 
 async def sembrar_datos_demo() -> None:
     """Inserta admin, catálogos, stock, precios y pedidos de demo."""
+    from scripts.seed_casuistica import (
+        asegurar_casuistica_mostrador,
+        asegurar_casuistica_rica,
+        asegurar_cxc_remitos_emitidos,
+    )
+
     async with fabrica_sesiones() as sesion:
         dao = UsuarioDAO(sesion)
         if await dao.buscar_por_email(EMAIL_DEMO) is not None:
+            await _asegurar_zonas_demo(sesion)
             await _asegurar_proveedores_demo(sesion)
             await _asegurar_tesoreria_demo(sesion)
+            cargada = await asegurar_casuistica_rica(sesion)
+            if cargada:
+                print("Casuística rica cargada sobre base existente.")
+            mostrador = await asegurar_casuistica_mostrador(sesion)
+            if mostrador:
+                print("Casuística mostrador: ≥50 clientes + remitos + cta. cte.")
+            n_cxc = await asegurar_cxc_remitos_emitidos(sesion)
+            if n_cxc:
+                print(f"CxC alineada con remitos emitidos ({n_cxc} movimientos).")
             return
 
         password_hash = hashear_password(PASSWORD_DEMO)
@@ -101,6 +133,13 @@ async def sembrar_datos_demo() -> None:
         sesion.add_all([admin, vendedor])
         await sesion.flush()
 
+        zonas = [
+            Zona(id="zona-1", nombre="Centro", codigo="CENTRO"),
+            Zona(id="zona-2", nombre="Norte", codigo="NORTE"),
+            Zona(id="zona-3", nombre="Rural", codigo="RURAL"),
+        ]
+        sesion.add_all(zonas)
+
         clientes = [
             Cliente(
                 id="cli-1",
@@ -110,6 +149,7 @@ async def sembrar_datos_demo() -> None:
                 cuit="27333444556",
                 condicion_iva="monotributo",
                 limite_credito=500000.0,
+                zona_id="zona-1",
                 vendedor_id="usr-vendedor-1",
             ),
             Cliente(
@@ -120,6 +160,7 @@ async def sembrar_datos_demo() -> None:
                 cuit="30712345678",
                 condicion_iva="responsable_inscripto",
                 limite_credito=2000000.0,
+                zona_id="zona-2",
                 vendedor_id="usr-vendedor-1",
             ),
             Cliente(
@@ -130,6 +171,7 @@ async def sembrar_datos_demo() -> None:
                 cuit="30111222334",
                 condicion_iva="responsable_inscripto",
                 limite_credito=5000000.0,
+                zona_id="zona-3",
                 observaciones="Cliente mayorista",
             ),
         ]
@@ -346,6 +388,9 @@ async def sembrar_datos_demo() -> None:
         )
 
         await sesion.commit()
+        await asegurar_casuistica_rica(sesion)
+        await asegurar_casuistica_mostrador(sesion)
+        await asegurar_cxc_remitos_emitidos(sesion)
 
 
 if __name__ == "__main__":
@@ -353,5 +398,8 @@ if __name__ == "__main__":
         await crear_tablas()
         await sembrar_datos_demo()
         print(f"Seed listo. Login demo: {EMAIL_DEMO} / {PASSWORD_DEMO}")
+        print("Casuística: clientes, productos, comprobantes, compras, cta. cte.,")
+        print("mostrador (≥50 clientes con remitos ≥5 ítems y saldos debe/a favor).")
+        print("CxC: remitos confirmados/facturados imputan debe.")
 
     asyncio.run(_main())

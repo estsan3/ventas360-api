@@ -15,7 +15,9 @@ class VentasDAO:
     def __init__(self, sesion: AsyncSession) -> None:
         self._sesion = sesion
 
-    async def listar(self, tipo: str | None = None) -> list[Pedido]:
+    async def listar(
+        self, tipo: str | None = None, cliente_id: str | None = None
+    ) -> list[Pedido]:
         consulta = (
             select(Pedido)
             .options(selectinload(Pedido.lineas))
@@ -23,6 +25,8 @@ class VentasDAO:
         )
         if tipo:
             consulta = consulta.where(Pedido.tipo == tipo)
+        if cliente_id:
+            consulta = consulta.where(Pedido.cliente_id == cliente_id)
         resultado = await self._sesion.execute(consulta)
         return list(resultado.scalars())
 

@@ -54,6 +54,36 @@ async def crear_tablas() -> None:
     from app.modulos.proveedores import models as _proveedores_models  # noqa: F401
     from app.modulos.stock import models as _stock_models  # noqa: F401
     from app.modulos.ventas import models as _ventas_models  # noqa: F401
+    from app.modulos.zonas import models as _zonas_models  # noqa: F401
 
     async with engine.begin() as conexion:
         await conexion.run_sync(Base.metadata.create_all)
+        await conexion.run_sync(_asegurar_columnas_proveedores)
+
+
+def _asegurar_columnas_proveedores(conexion) -> None:
+    """Agrega columnas nuevas de listas Excel si la tabla ya existía."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(conexion)
+    if "proveedores_proveedor" not in inspector.get_table_names():
+        return
+    existentes = {col["name"] for col in inspector.get_columns("proveedores_proveedor")}
+    dialecto = conexion.dialect.name
+    extras: list[tuple[str, str]] = [
+        ("mapeo_excel", "JSON" if dialecto == "postgresql" else "TEXT"),
+        ("excel_fila_inicio", "INTEGER DEFAULT 2"),
+        ("politica_precio_venta", "VARCHAR(40) DEFAULT 'solo_costo'"),
+        ("margen_venta_pct", "FLOAT DEFAULT 30"),
+        ("ultima_importacion_fecha", "TIMESTAMP"),
+        ("ultima_importacion_archivo", "VARCHAR(255) DEFAULT ''"),
+        ("ultima_importacion_actualizados", "INTEGER DEFAULT 0"),
+        ("ultima_importacion_nuevos", "INTEGER DEFAULT 0"),
+        ("ultima_importacion_sin_match", "INTEGER DEFAULT 0"),
+    ]
+    for nombre, tipo in extras:
+        if nombre in existentes:
+            continue
+        conexion.execute(
+            text(f"ALTER TABLE proveedores_proveedor ADD COLUMN {nombre} {tipo}")
+        )

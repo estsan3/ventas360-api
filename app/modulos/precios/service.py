@@ -8,6 +8,7 @@ from app.modulos.precios.contrato import PreciosLocal
 from app.modulos.precios.dao import PreciosDAO
 from app.modulos.precios.models import ListaPrecio, PrecioArticulo
 from app.modulos.precios.schemas import (
+    ActualizarListaPrecioRequest,
     CrearListaPrecioRequest,
     ListaPrecioResponse,
     PrecioArticuloResponse,
@@ -46,6 +47,42 @@ class PreciosService:
         await self._dao.guardar_lista(lista)
         await self._sesion.commit()
         return ListaPrecioResponse.model_validate(lista)
+
+    async def actualizar_lista(
+        self, lista_id: str, datos: ActualizarListaPrecioRequest
+    ) -> ListaPrecioResponse:
+        lista = await self._dao.buscar_lista(lista_id)
+        if lista is None:
+            raise RecursoNoEncontrado("Lista de precios no encontrada")
+        if datos.nombre is not None:
+            lista.nombre = datos.nombre.strip()
+        if datos.es_default is True:
+            await self._quitar_default_actual()
+            lista.es_default = True
+        elif datos.es_default is False:
+            lista.es_default = False
+        await self._dao.guardar_lista(lista)
+        await self._sesion.commit()
+        return ListaPrecioResponse.model_validate(lista)
+
+    async def desactivar_lista(self, lista_id: str) -> ListaPrecioResponse:
+        lista = await self._dao.buscar_lista(lista_id)
+        if lista is None:
+            raise RecursoNoEncontrado("Lista de precios no encontrada")
+        if not lista.activo:
+            raise ReglaDeNegocioViolada("La lista ya está inactiva")
+        if lista.es_default:
+            raise ReglaDeNegocioViolada("No se puede desactivar la lista default")
+        lista.activo = False
+        await self._dao.guardar_lista(lista)
+        await self._sesion.commit()
+        return ListaPrecioResponse.model_validate(lista)
+
+    async def listar_precios_lista(self, lista_id: str) -> list[PrecioArticuloResponse]:
+        if await self._dao.buscar_lista(lista_id) is None:
+            raise RecursoNoEncontrado("Lista de precios no encontrada")
+        items = await self._dao.listar_precios_lista(lista_id)
+        return [PrecioArticuloResponse.model_validate(i) for i in items]
 
     async def upsert_precio(
         self, datos: UpsertPrecioArticuloRequest

@@ -41,11 +41,19 @@ class CxcService:
     async def saldo(self, cliente_id: str) -> SaldoClienteResponse:
         await self._asegurar_cliente(cliente_id)
         debe, haber = await self._dao.totales_cliente(cliente_id)
+        movimientos = await self._dao.listar_por_cliente(cliente_id)
+        fecha_ultimo = max((m.fecha for m in movimientos), default=None)
+        fecha_debe = min(
+            (m.fecha for m in movimientos if m.tipo == "debe"),
+            default=None,
+        )
         return SaldoClienteResponse(
             cliente_id=cliente_id,
             saldo=self._bo.calcular_saldo(debe, haber),
             debe_total=round(debe, 2),
             haber_total=round(haber, 2),
+            fecha_ultimo_movimiento=fecha_ultimo,
+            fecha_debe_mas_antigua=fecha_debe,
         )
 
     async def listar_saldos(self) -> list[SaldoClienteResponse]:
@@ -56,8 +64,10 @@ class CxcService:
                 saldo=self._bo.calcular_saldo(debe, haber),
                 debe_total=round(debe, 2),
                 haber_total=round(haber, 2),
+                fecha_ultimo_movimiento=fecha_ultimo,
+                fecha_debe_mas_antigua=fecha_debe,
             )
-            for cliente_id, debe, haber in filas
+            for cliente_id, debe, haber, fecha_ultimo, fecha_debe in filas
         ]
 
     async def registrar_ajuste(

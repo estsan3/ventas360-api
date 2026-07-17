@@ -33,6 +33,10 @@ class ContratoCxc(Protocol):
 
     async def saldo_cliente(self, cliente_id: str) -> float: ...
 
+    async def existe_referencia(
+        self, referencia_tipo: str, referencia_id: str
+    ) -> bool: ...
+
 
 class CxcLocal:
     """Implementación local: no hace commit (lo controla el service orquestador)."""
@@ -70,6 +74,11 @@ class CxcLocal:
     async def saldo_cliente(self, cliente_id: str) -> float:
         debe, haber = await self._dao.totales_cliente(cliente_id)
         return self._bo.calcular_saldo(debe, haber)
+
+    async def existe_referencia(
+        self, referencia_tipo: str, referencia_id: str
+    ) -> bool:
+        return await self._dao.existe_referencia(referencia_tipo, referencia_id)
 
     async def _registrar(
         self,

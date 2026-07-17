@@ -1,15 +1,18 @@
 """API del módulo proveedores."""
 
+import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
 from app.core.dependencias import obtener_usuario_actual, requerir_rol
+from app.core.excepciones import ReglaDeNegocioViolada
 from app.modulos.proveedores.schemas import (
     ActualizarProveedorRequest,
     CrearProveedorRequest,
+    ImportarListaResponse,
     ProveedorResponse,
     ProveedoresPaginaResponse,
 )
@@ -79,3 +82,53 @@ async def actualizar_proveedor(
 )
 async def desactivar_proveedor(proveedor_id: str, sesion: Sesion) -> ProveedorResponse:
     return await ProveedoresService(sesion).desactivar(proveedor_id)
+
+
+@router.post(
+    "/{proveedor_id}/listas/importar",
+    response_model=ImportarListaResponse,
+    dependencies=[Depends(requerir_rol("administrador"))],
+    operation_id="importar_lista_proveedor",
+)
+async def importar_lista_proveedor(
+    proveedor_id: str,
+    sesion: Sesion,
+    archivo: UploadFile = File(...),
+    mapeo: str | None = Form(default=None),
+    fila_inicio: int | None = Form(default=None),
+    politica_precio_venta: str | None = Form(default=None),
+    margen_venta_pct: float | None = Form(default=None),
+    dry_run: bool = Query(default=False),
+) -> ImportarListaResponse:
+    """Importa (o previsualiza) una lista Excel → upsert de artículos/costos."""
+    nombre = archivo.filename or "lista.xlsx"
+    if not nombre.lower().endswith((".xlsx", ".xlsm")):
+        raise ReglaDeNegocioViolada("El archivo debe ser Excel (.xlsx)")
+    contenido = await archivo.read()
+    if not contenido:
+        raise ReglaDeNegocioViolada("El archivo está vacío")
+
+    mapeo_override = None
+    if mapeo:
+        try:
+            parsed = json.loads(mapeo)
+        except json.JSONDecodeError as exc:
+            raise ReglaDeNegocioViolada("mapeo debe ser JSON válido") from exc
+        if not isinstance(parsed, list):
+            raise ReglaDeNegocioViolada("mapeo debe ser una lista")
+        mapeo_override = [
+            {"columna": str(item.get("columna", "")), "campo": str(item.get("campo", ""))}
+            for item in parsed
+            if isinstance(item, dict)
+        ]
+
+    return await ProveedoresService(sesion).importar_lista(
+        proveedor_id,
+        contenido=contenido,
+        nombre_archivo=nombre,
+        mapeo_override=mapeo_override,
+        fila_inicio=fila_inicio,
+        politica=politica_precio_venta,
+        margen_pct=margen_venta_pct,
+        dry_run=dry_run,
+    )

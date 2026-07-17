@@ -23,7 +23,7 @@ class MovimientoCxc(Base):
     # debe | haber
     tipo: Mapped[str] = mapped_column(String(10))
     monto: Mapped[float] = mapped_column(Float)
-    # factura | recibo | ajuste
+    # remito | factura | recibo | ajuste
     referencia_tipo: Mapped[str] = mapped_column(String(20), default="")
     referencia_id: Mapped[str] = mapped_column(String(36), default="", index=True)
     concepto: Mapped[str] = mapped_column(String(200), default="")

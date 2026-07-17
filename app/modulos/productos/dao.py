@@ -62,6 +62,14 @@ class ProductoDAO:
         await self._sesion.flush()
         return producto
 
+    async def listar_activos(self) -> list[Producto]:
+        resultado = await self._sesion.execute(
+            select(Producto)
+            .where(Producto.activo.is_(True))
+            .order_by(Producto.nombre)
+        )
+        return list(resultado.scalars())
+
     async def contar_activos(self) -> int:
         resultado = await self._sesion.execute(
             select(func.count()).select_from(Producto).where(Producto.activo.is_(True))

@@ -13,6 +13,18 @@ from app.modulos.stock.models import MovimientoStock, SaldoStock
 class ContratoStock(Protocol):
     async def obtener_saldo(self, articulo_id: str, deposito_id: str) -> int: ...
 
+    async def saldo_total_articulo(self, articulo_id: str) -> int: ...
+
+    async def deposito_default_id(self) -> str | None: ...
+
+    async def establecer_cantidad(
+        self,
+        articulo_id: str,
+        deposito_id: str,
+        cantidad: int,
+        referencia: str,
+    ) -> int: ...
+
     async def egresar(
         self,
         articulo_id: str,
@@ -43,6 +55,51 @@ class StockLocal:
     async def obtener_saldo(self, articulo_id: str, deposito_id: str) -> int:
         saldo = await self._dao.buscar_saldo(articulo_id, deposito_id)
         return saldo.cantidad if saldo else 0
+
+    async def saldo_total_articulo(self, articulo_id: str) -> int:
+        saldos = await self._dao.listar_saldos_articulo(articulo_id)
+        return sum(s.cantidad for s in saldos)
+
+    async def deposito_default_id(self) -> str | None:
+        depositos = await self._dao.listar_depositos(solo_activos=True)
+        return depositos[0].id if depositos else None
+
+    async def establecer_cantidad(
+        self,
+        articulo_id: str,
+        deposito_id: str,
+        cantidad: int,
+        referencia: str,
+    ) -> int:
+        """Ajusta el saldo a una cantidad absoluta (sin commit)."""
+        if cantidad < 0:
+            raise ReglaDeNegocioViolada("La cantidad de stock no puede ser negativa")
+        deposito = await self._dao.buscar_deposito(deposito_id)
+        if deposito is None or not deposito.activo:
+            raise RecursoNoEncontrado("Depósito no encontrado")
+        saldo = await self._dao.buscar_saldo(articulo_id, deposito_id)
+        actual = saldo.cantidad if saldo else 0
+        delta = cantidad - actual
+        if delta == 0:
+            return actual
+        if saldo is None:
+            saldo = SaldoStock(
+                articulo_id=articulo_id,
+                deposito_id=deposito_id,
+                cantidad=0,
+            )
+        saldo.cantidad = cantidad
+        await self._dao.guardar_movimiento(
+            MovimientoStock(
+                articulo_id=articulo_id,
+                deposito_id=deposito_id,
+                tipo="ajuste",
+                cantidad=delta,
+                referencia=referencia,
+            )
+        )
+        await self._dao.guardar_saldo(saldo)
+        return saldo.cantidad
 
     async def egresar(
         self,

@@ -47,6 +47,12 @@ class StockDAO:
         )
         return list(resultado.scalars())
 
+    async def listar_saldos_deposito(self, deposito_id: str) -> list[SaldoStock]:
+        resultado = await self._sesion.execute(
+            select(SaldoStock).where(SaldoStock.deposito_id == deposito_id)
+        )
+        return list(resultado.scalars())
+
     async def guardar_saldo(self, saldo: SaldoStock) -> SaldoStock:
         self._sesion.add(saldo)
         await self._sesion.flush()

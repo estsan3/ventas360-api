@@ -54,3 +54,11 @@ class PreciosDAO:
         self._sesion.add(precio)
         await self._sesion.flush()
         return precio
+
+    async def listar_precios_lista(self, lista_id: str) -> list[PrecioArticulo]:
+        resultado = await self._sesion.execute(
+            select(PrecioArticulo)
+            .where(PrecioArticulo.lista_id == lista_id)
+            .order_by(PrecioArticulo.articulo_id)
+        )
+        return list(resultado.scalars())

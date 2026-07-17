@@ -19,6 +19,11 @@ class CrearListaPrecioRequest(BaseModel):
     es_default: bool = False
 
 
+class ActualizarListaPrecioRequest(BaseModel):
+    nombre: str | None = Field(default=None, min_length=1, max_length=120)
+    es_default: bool | None = None
+
+
 class PrecioArticuloResponse(BaseModel):
     id: str
     lista_id: str

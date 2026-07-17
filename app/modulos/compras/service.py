@@ -169,10 +169,11 @@ class ComprasService:
                 raise ReglaDeNegocioViolada(
                     f"Producto inexistente o inactivo: {item.producto_id}"
                 )
+            # Compras usan costo de lista del proveedor; venta usa producto.precio.
             precio = (
                 item.precio_unitario
                 if item.precio_unitario is not None
-                else producto.precio
+                else producto.costo
             )
             lineas.append(
                 LineaCompra(

@@ -12,15 +12,21 @@ from app.modulos.productos.schemas import (
     ProductoResponse,
     ProductosPaginaResponse,
 )
+from app.modulos.stock.contrato import ContratoStock, StockLocal
 
 
 class ProductosService:
     """Casos de uso de productos."""
 
-    def __init__(self, sesion: AsyncSession) -> None:
+    def __init__(
+        self,
+        sesion: AsyncSession,
+        stock: ContratoStock | None = None,
+    ) -> None:
         self._sesion = sesion
         self._dao = ProductoDAO(sesion)
         self._bo = ProductoBO()
+        self._stock = stock or StockLocal(sesion)
 
     async def listar(
         self,
@@ -33,8 +39,13 @@ class ProductosService:
         items, total = await self._dao.listar(
             q=q, activo=activo, page=page, page_size=page_size
         )
+        respuestas: list[ProductoResponse] = []
+        for p in items:
+            resp = ProductoResponse.model_validate(p)
+            resp.stock = await self._stock.saldo_total_articulo(p.id)
+            respuestas.append(resp)
         return ProductosPaginaResponse(
-            items=[ProductoResponse.model_validate(p) for p in items],
+            items=respuestas,
             total=total,
             page=page,
             page_size=page_size,
@@ -42,7 +53,9 @@ class ProductosService:
 
     async def obtener(self, producto_id: str) -> ProductoResponse:
         producto = await self._buscar_o_fallar(producto_id)
-        return ProductoResponse.model_validate(producto)
+        resp = ProductoResponse.model_validate(producto)
+        resp.stock = await self._stock.saldo_total_articulo(producto.id)
+        return resp
 
     async def crear(self, datos: CrearProductoRequest) -> ProductoResponse:
         existente = await self._dao.buscar_por_sku(datos.sku)
@@ -61,8 +74,12 @@ class ProductosService:
             stock=datos.stock,
         )
         await self._dao.guardar(producto)
+        if datos.stock > 0:
+            await self._sincronizar_stock_deposito(producto.id, datos.stock)
         await self._sesion.commit()
-        return ProductoResponse.model_validate(producto)
+        resp = ProductoResponse.model_validate(producto)
+        resp.stock = await self._stock.saldo_total_articulo(producto.id)
+        return resp
 
     async def actualizar(
         self, producto_id: str, datos: ActualizarProductoRequest
@@ -93,11 +110,25 @@ class ProductosService:
         if datos.stock is not None:
             self._bo.validar_stock(datos.stock)
             producto.stock = datos.stock
+            await self._sincronizar_stock_deposito(producto.id, datos.stock)
         if datos.activo is not None:
             producto.activo = datos.activo
 
         await self._sesion.commit()
-        return ProductoResponse.model_validate(producto)
+        resp = ProductoResponse.model_validate(producto)
+        resp.stock = await self._stock.saldo_total_articulo(producto.id)
+        return resp
+
+    async def _sincronizar_stock_deposito(self, articulo_id: str, cantidad: int) -> None:
+        deposito_id = await self._stock.deposito_default_id()
+        if deposito_id is None:
+            return
+        await self._stock.establecer_cantidad(
+            articulo_id,
+            deposito_id,
+            cantidad,
+            referencia=f"catalogo:{articulo_id[:8]}",
+        )
 
     async def _buscar_o_fallar(self, producto_id: str) -> Producto:
         producto = await self._dao.buscar_por_id(producto_id)

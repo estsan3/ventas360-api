@@ -24,6 +24,8 @@ class SaldoClienteResponse(BaseModel):
     saldo: float
     debe_total: float
     haber_total: float
+    fecha_ultimo_movimiento: date | None = None
+    fecha_debe_mas_antigua: date | None = None
 
 
 class EstadoCuentaResponse(BaseModel):

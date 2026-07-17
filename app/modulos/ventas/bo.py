@@ -2,9 +2,17 @@
 
 from app.core.excepciones import ReglaDeNegocioViolada
 
-TIPOS = {"pedido", "remito", "factura"}
+TIPOS = {"presupuesto", "pedido", "remito", "factura"}
 
 _TRANSICIONES: dict[str, dict[str, set[str]]] = {
+    "presupuesto": {
+        "borrador": {"vigente", "cancelado"},
+        "vigente": {"aceptado", "vencido", "cancelado"},
+        "aceptado": {"convertido", "cancelado"},
+        "vencido": {"vigente", "cancelado"},
+        "convertido": set(),
+        "cancelado": set(),
+    },
     "pedido": {
         "borrador": {"confirmado", "cancelado"},
         "confirmado": {"entregado", "cancelado"},
