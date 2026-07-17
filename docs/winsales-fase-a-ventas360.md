@@ -134,15 +134,15 @@ flowchart TB
 | A3 precios (listas + contrato) | Hecho (API base) |
 | A4 stock multi-depósito | Hecho (API base: depósitos/saldos/ajustes) |
 | A5 remitos/facturas tipados | Hecho (API + web: confirmar remito→stock, facturar) |
-| A6–A7 cxc + cobranzas | Pendiente |
+| A6–A7 cxc + cobranzas | Hecho (API + web cuenta corriente/recibos) |
 | A8–A9 parámetros/reportería | Pendiente |
 
 ## Criterios de aceptación Fase A
 
 - [x] Listar/buscar artículos con paginación (seed demo ampliado; 10k queda para ETL).  
 - [x] Crear remito que descuente stock de un depósito.  
-- [x] Convertir remito en factura (imputación CxC = A6).  
-- [ ] Registrar recibo que reduzca saldo CxC.  
+- [x] Convertir remito en factura e imputar CxC.  
+- [x] Registrar recibo que reduzca saldo CxC.  
 - [ ] Dashboard con KPIs desde `/reporteria/kpis`.  
 - [x] Sin módulos de contabilidad, OC ni taller.
 

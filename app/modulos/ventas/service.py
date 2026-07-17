@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.eventos import EventoDominio, bus_eventos
 from app.core.excepciones import RecursoNoEncontrado, ReglaDeNegocioViolada
 from app.modulos.clientes.contrato import ClientesLocal, ContratoClientes
+from app.modulos.cxc.contrato import ContratoCxc, CxcLocal
 from app.modulos.parametros.contrato import ContratoParametros, ParametrosLocal
 from app.modulos.precios.contrato import ContratoPrecios, PreciosLocal
 from app.modulos.productos.contrato import ContratoProductos, ProductosLocal
@@ -32,6 +33,7 @@ class VentasService:
         precios: ContratoPrecios | None = None,
         stock: ContratoStock | None = None,
         parametros: ContratoParametros | None = None,
+        cxc: ContratoCxc | None = None,
     ) -> None:
         self._sesion = sesion
         self._dao = VentasDAO(sesion)
@@ -41,6 +43,7 @@ class VentasService:
         self._precios = precios or PreciosLocal(sesion)
         self._stock = stock or StockLocal(sesion)
         self._parametros = parametros or ParametrosLocal(sesion)
+        self._cxc = cxc or CxcLocal(sesion)
 
     async def listar(self, tipo: str | None = None) -> list[PedidoResponse]:
         pedidos = await self._dao.listar(tipo=tipo)
@@ -102,6 +105,8 @@ class VentasService:
         self._bo.validar_transicion(pedido.tipo, pedido.estado, datos.estado)
         estado_anterior = pedido.estado
         pedido.estado = datos.estado
+        if pedido.tipo == "factura" and datos.estado == "confirmado":
+            await self._imputar_factura_en_cxc(pedido)
         await self._sesion.commit()
         await bus_eventos.publicar(
             EventoDominio(
@@ -175,6 +180,7 @@ class VentasService:
         )
         remito.estado = "facturado"
         await self._dao.guardar(factura)
+        await self._imputar_factura_en_cxc(factura)
         await self._sesion.commit()
         await self._sesion.refresh(factura, attribute_names=["lineas"])
         await bus_eventos.publicar(
@@ -189,6 +195,17 @@ class VentasService:
             )
         )
         return PedidoResponse.model_validate(factura)
+
+    async def _imputar_factura_en_cxc(self, factura: Pedido) -> None:
+        """Registra el debe en cuenta corriente (idempotente por referencia)."""
+        await self._cxc.registrar_debe(
+            cliente_id=factura.cliente_id,
+            monto=factura.total,
+            referencia_tipo="factura",
+            referencia_id=factura.id,
+            concepto=f"Factura {factura.id}",
+            fecha=factura.fecha,
+        )
 
     async def _armar_lineas(
         self, datos: CrearPedidoRequest
