@@ -23,3 +23,12 @@ def test_egreso_ok() -> None:
 def test_egreso_sin_stock() -> None:
     with pytest.raises(ReglaDeNegocioViolada, match="insuficiente"):
         StockBO().validar_egreso(5, 2)
+
+
+def test_ingreso_ok() -> None:
+    StockBO().validar_ingreso(4)
+
+
+def test_ingreso_cero() -> None:
+    with pytest.raises(ReglaDeNegocioViolada, match="mayor a cero"):
+        StockBO().validar_ingreso(0)

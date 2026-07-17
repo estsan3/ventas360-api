@@ -135,7 +135,8 @@ flowchart TB
 | A4 stock multi-depósito | Hecho (API base: depósitos/saldos/ajustes) |
 | A5 remitos/facturas tipados | Hecho (API + web: confirmar remito→stock, facturar) |
 | A6–A7 cxc + cobranzas | Hecho (API + web cuenta corriente/recibos) |
-| A8–A9 parámetros/reportería | Hecho (talonarios/sucursal + KPIs dashboard) |
+| A8 parámetros / Configuración | Hecho (API operativos+talonarios + web Configuración editable) |
+| A9 reportería | Hecho (KPIs reales en dashboard) |
 
 ## Criterios de aceptación Fase A
 
@@ -156,6 +157,10 @@ flowchart TB
 - Mensajería interna.  
 - Migración automática desde el `.mdb` (será un proyecto aparte de ETL).
 
+## Fase B
+
+Ver plan y progreso: [winsales-fase-b-ventas360.md](./winsales-fase-b-ventas360.md).
+
 ## Próximo paso operativo
 
-Cuando se apruebe ejecutar Fase A: abrir issues/PRs por slice vertical (ej. “stock multi-depósito”, “remitos”, “cxc+recibos”) empezando por paginación de artículos y modelo de comprobantes tipados en `app/modulos/ventas`.
+**Fase A cerrada.** Fase B en curso (empezando por B1 proveedores/compras/CxP).

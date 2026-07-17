@@ -22,3 +22,7 @@ class StockBO:
             raise ReglaDeNegocioViolada(
                 f"Stock insuficiente: disponible {saldo_actual}, solicitado {cantidad}"
             )
+
+    def validar_ingreso(self, cantidad: int) -> None:
+        if cantidad <= 0:
+            raise ReglaDeNegocioViolada("La cantidad a ingresar debe ser mayor a cero")

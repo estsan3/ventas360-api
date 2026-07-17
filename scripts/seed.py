@@ -14,10 +14,12 @@ from app.core.database import crear_tablas, fabrica_sesiones
 from app.core.seguridad import hashear_password
 from app.modulos.auth.dao import UsuarioDAO
 from app.modulos.auth.models import Usuario
+from app.modulos.bancos.models import CuentaBancaria
 from app.modulos.clientes.models import Cliente
 from app.modulos.parametros.models import Parametro, Talonario
 from app.modulos.precios.models import ListaPrecio
 from app.modulos.productos.models import Producto
+from app.modulos.proveedores.models import Proveedor
 from app.modulos.stock.models import Deposito, SaldoStock
 from app.modulos.ventas.models import LineaPedido, Pedido
 
@@ -25,11 +27,59 @@ EMAIL_DEMO = "admin@ventas360.com"
 PASSWORD_DEMO = "demo12345"
 
 
+async def _asegurar_proveedores_demo(sesion) -> None:
+    """Fase B1: proveedores demo aunque el seed principal ya haya corrido."""
+    existente = await sesion.get(Proveedor, "prov-1")
+    if existente is not None:
+        return
+    sesion.add_all(
+        [
+            Proveedor(
+                id="prov-1",
+                nombre="Distribuidora Andina SA",
+                email="compras@andina.demo",
+                telefono="11-4000-1001",
+                cuit="30711222334",
+                condicion_iva="responsable_inscripto",
+            ),
+            Proveedor(
+                id="prov-2",
+                nombre="Importadora Sur",
+                email="ventas@importsur.demo",
+                telefono="11-4000-1002",
+                cuit="30799888776",
+                condicion_iva="responsable_inscripto",
+            ),
+        ]
+    )
+    await sesion.commit()
+
+
+async def _asegurar_tesoreria_demo(sesion) -> None:
+    """Fase B2/B3: cuenta bancaria default si falta."""
+    existente = await sesion.get(CuentaBancaria, "bco-1")
+    if existente is not None:
+        return
+    sesion.add(
+        CuentaBancaria(
+            id="bco-1",
+            codigo="CAJA-AHORRO",
+            nombre="Caja de ahorro principal",
+            banco="Banco Demo",
+            cbu="0170000000000000000001",
+            es_default=True,
+        )
+    )
+    await sesion.commit()
+
+
 async def sembrar_datos_demo() -> None:
     """Inserta admin, catálogos, stock, precios y pedidos de demo."""
     async with fabrica_sesiones() as sesion:
         dao = UsuarioDAO(sesion)
         if await dao.buscar_por_email(EMAIL_DEMO) is not None:
+            await _asegurar_proveedores_demo(sesion)
+            await _asegurar_tesoreria_demo(sesion)
             return
 
         password_hash = hashear_password(PASSWORD_DEMO)
@@ -266,6 +316,34 @@ async def sembrar_datos_demo() -> None:
             ],
         )
         sesion.add_all([pedido1, pedido2, remito_demo])
+        sesion.add_all(
+            [
+                Proveedor(
+                    id="prov-1",
+                    nombre="Distribuidora Andina SA",
+                    email="compras@andina.demo",
+                    telefono="11-4000-1001",
+                    cuit="30711222334",
+                    condicion_iva="responsable_inscripto",
+                ),
+                Proveedor(
+                    id="prov-2",
+                    nombre="Importadora Sur",
+                    email="ventas@importsur.demo",
+                    telefono="11-4000-1002",
+                    cuit="30799888776",
+                    condicion_iva="responsable_inscripto",
+                ),
+                CuentaBancaria(
+                    id="bco-1",
+                    codigo="CAJA-AHORRO",
+                    nombre="Caja de ahorro principal",
+                    banco="Banco Demo",
+                    cbu="0170000000000000000001",
+                    es_default=True,
+                ),
+            ]
+        )
 
         await sesion.commit()
 

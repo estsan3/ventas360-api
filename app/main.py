@@ -19,12 +19,17 @@ from app.core.eventos import bus_eventos
 from app.core.excepciones import ErrorDeNegocio, manejar_error_de_negocio
 from app.modulos.auth.router import router as auth_router
 from app.modulos.auth.router import router_usuarios, router_vendedores
+from app.modulos.bancos.router import router as bancos_router
+from app.modulos.caja.router import router as caja_router
 from app.modulos.clientes.router import router as clientes_router
 from app.modulos.cobranzas.router import router as cobranzas_router
+from app.modulos.compras.router import router as compras_router
 from app.modulos.cxc.router import router as cxc_router
+from app.modulos.cxp.router import router as cxp_router
 from app.modulos.parametros.router import router as parametros_router
 from app.modulos.precios.router import router as precios_router
 from app.modulos.productos.router import router as productos_router
+from app.modulos.proveedores.router import router as proveedores_router
 from app.modulos.reporteria.router import router as reporteria_router
 from app.modulos.stock.router import router as stock_router
 from app.modulos.ventas.eventos import registrar_suscripciones_ventas
@@ -58,8 +63,7 @@ def crear_aplicacion() -> FastAPI:
         title="Ventas360 API",
         description=(
             "Backend modular de Ventas360: administración de ventas y comercio "
-            "con agentes de IA. Módulos: auth, clientes, productos, precios, "
-            "stock, ventas, cxc, cobranzas, parámetros y reportería."
+            "con agentes de IA. Incluye Fase B1: proveedores, compras y CxP."
         ),
         version="0.1.0",
         lifespan=ciclo_de_vida,
@@ -88,6 +92,11 @@ def crear_aplicacion() -> FastAPI:
     app.include_router(ventas_router, prefix=prefijo)
     app.include_router(cxc_router, prefix=prefijo)
     app.include_router(cobranzas_router, prefix=prefijo)
+    app.include_router(proveedores_router, prefix=prefijo)
+    app.include_router(compras_router, prefix=prefijo)
+    app.include_router(cxp_router, prefix=prefijo)
+    app.include_router(caja_router, prefix=prefijo)
+    app.include_router(bancos_router, prefix=prefijo)
     app.include_router(parametros_router, prefix=prefijo)
     app.include_router(reporteria_router, prefix=prefijo)
 

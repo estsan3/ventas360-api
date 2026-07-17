@@ -41,12 +41,17 @@ async def obtener_sesion() -> AsyncIterator[AsyncSession]:
 async def crear_tablas() -> None:
     """Crea todas las tablas declaradas. Para desarrollo con SQLite."""
     from app.modulos.auth import models as _auth_models  # noqa: F401
+    from app.modulos.bancos import models as _bancos_models  # noqa: F401
+    from app.modulos.caja import models as _caja_models  # noqa: F401
     from app.modulos.clientes import models as _clientes_models  # noqa: F401
     from app.modulos.cobranzas import models as _cobranzas_models  # noqa: F401
+    from app.modulos.compras import models as _compras_models  # noqa: F401
     from app.modulos.cxc import models as _cxc_models  # noqa: F401
+    from app.modulos.cxp import models as _cxp_models  # noqa: F401
     from app.modulos.parametros import models as _parametros_models  # noqa: F401
     from app.modulos.precios import models as _precios_models  # noqa: F401
     from app.modulos.productos import models as _productos_models  # noqa: F401
+    from app.modulos.proveedores import models as _proveedores_models  # noqa: F401
     from app.modulos.stock import models as _stock_models  # noqa: F401
     from app.modulos.ventas import models as _ventas_models  # noqa: F401
 

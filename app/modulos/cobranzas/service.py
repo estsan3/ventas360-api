@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.eventos import EventoDominio, bus_eventos
 from app.core.excepciones import RecursoNoEncontrado, ReglaDeNegocioViolada
+from app.modulos.bancos.contrato import BancosLocal, ContratoBancos
+from app.modulos.caja.contrato import CajaLocal, ContratoCaja
 from app.modulos.clientes.contrato import ClientesLocal, ContratoClientes
 from app.modulos.cobranzas.bo import CobranzasBO
 from app.modulos.cobranzas.dao import CobranzasDAO
@@ -22,6 +24,8 @@ class CobranzasService:
         clientes: ContratoClientes | None = None,
         cxc: ContratoCxc | None = None,
         ventas: ContratoVentas | None = None,
+        caja: ContratoCaja | None = None,
+        bancos: ContratoBancos | None = None,
     ) -> None:
         self._sesion = sesion
         self._dao = CobranzasDAO(sesion)
@@ -29,6 +33,8 @@ class CobranzasService:
         self._clientes = clientes or ClientesLocal(sesion)
         self._cxc = cxc or CxcLocal(sesion)
         self._ventas = ventas or VentasLocal(sesion)
+        self._caja = caja or CajaLocal(sesion)
+        self._bancos = bancos or BancosLocal(sesion)
 
     async def listar(self, cliente_id: str | None = None) -> list[ReciboResponse]:
         items = await self._dao.listar(cliente_id=cliente_id)
@@ -87,6 +93,9 @@ class CobranzasService:
             fecha=fecha,
         )
 
+        # Tesorería (B2/B3): efectivo/tarjeta → caja; transferencia → banco.
+        await self._impactar_tesoreria(recibo)
+
         await self._sesion.commit()
         await self._sesion.refresh(recibo, attribute_names=["imputaciones"])
         await bus_eventos.publicar(
@@ -100,3 +109,24 @@ class CobranzasService:
             )
         )
         return ReciboResponse.model_validate(recibo)
+
+    async def _impactar_tesoreria(self, recibo: Recibo) -> None:
+        concepto = f"Cobranza recibo {recibo.id[:8]}"
+        if recibo.medio == "transferencia":
+            await self._bancos.acreditar(
+                monto=recibo.monto,
+                concepto=concepto,
+                referencia_tipo="recibo",
+                referencia_id=recibo.id,
+                fecha=recibo.fecha,
+            )
+            return
+        medio_caja = "tarjeta" if recibo.medio == "tarjeta" else "efectivo"
+        await self._caja.registrar_ingreso(
+            monto=recibo.monto,
+            medio=medio_caja,
+            concepto=concepto,
+            referencia_tipo="recibo",
+            referencia_id=recibo.id,
+            fecha=recibo.fecha,
+        )
