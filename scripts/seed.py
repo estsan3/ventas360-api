@@ -169,27 +169,75 @@ async def sembrar_datos_demo() -> None:
 
         pedido1 = Pedido(
             id="ped-1",
+            tipo="pedido",
             cliente_id="cli-1",
             estado="confirmado",
             fecha=date.today(),
-            total=868500.0,
+            neto=868500.0,
+            iva=182385.0,
+            iva_porcentaje=21.0,
+            total=1050885.0,
             lineas=[
-                LineaPedido(producto_id="prod-1", cantidad=1, precio_unitario=850000.0),
-                LineaPedido(producto_id="prod-2", cantidad=1, precio_unitario=18500.0),
+                LineaPedido(
+                    producto_id="prod-1",
+                    descripcion='Notebook 14"',
+                    cantidad=1,
+                    precio_unitario=850000.0,
+                ),
+                LineaPedido(
+                    producto_id="prod-2",
+                    descripcion="Mouse inalámbrico",
+                    cantidad=1,
+                    precio_unitario=18500.0,
+                ),
             ],
         )
         pedido2 = Pedido(
             id="ped-2",
+            tipo="pedido",
             cliente_id="cli-2",
             estado="entregado",
             fecha=date.today(),
-            total=362000.0,
+            neto=362000.0,
+            iva=76020.0,
+            iva_porcentaje=21.0,
+            total=438020.0,
             lineas=[
-                LineaPedido(producto_id="prod-4", cantidad=1, precio_unitario=320000.0),
-                LineaPedido(producto_id="prod-3", cantidad=1, precio_unitario=42000.0),
+                LineaPedido(
+                    producto_id="prod-4",
+                    descripcion='Monitor 27"',
+                    cantidad=1,
+                    precio_unitario=320000.0,
+                ),
+                LineaPedido(
+                    producto_id="prod-3",
+                    descripcion="Teclado mecánico",
+                    cantidad=1,
+                    precio_unitario=42000.0,
+                ),
             ],
         )
-        sesion.add_all([pedido1, pedido2])
+        remito_demo = Pedido(
+            id="rem-1",
+            tipo="remito",
+            cliente_id="cli-3",
+            deposito_id="dep-1",
+            estado="borrador",
+            fecha=date.today(),
+            neto=42000.0,
+            iva=8820.0,
+            iva_porcentaje=21.0,
+            total=50820.0,
+            lineas=[
+                LineaPedido(
+                    producto_id="prod-3",
+                    descripcion="Teclado mecánico",
+                    cantidad=1,
+                    precio_unitario=42000.0,
+                ),
+            ],
+        )
+        sesion.add_all([pedido1, pedido2, remito_demo])
 
         await sesion.commit()
 

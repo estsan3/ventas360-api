@@ -10,15 +10,20 @@ from app.modulos.ventas.models import Pedido
 
 
 class VentasDAO:
-    """Persistencia de pedidos."""
+    """Persistencia de comprobantes."""
 
     def __init__(self, sesion: AsyncSession) -> None:
         self._sesion = sesion
 
-    async def listar(self) -> list[Pedido]:
-        resultado = await self._sesion.execute(
-            select(Pedido).options(selectinload(Pedido.lineas)).order_by(Pedido.fecha.desc())
+    async def listar(self, tipo: str | None = None) -> list[Pedido]:
+        consulta = (
+            select(Pedido)
+            .options(selectinload(Pedido.lineas))
+            .order_by(Pedido.fecha.desc(), Pedido.id.desc())
         )
+        if tipo:
+            consulta = consulta.where(Pedido.tipo == tipo)
+        resultado = await self._sesion.execute(consulta)
         return list(resultado.scalars())
 
     async def buscar_por_id(self, pedido_id: str) -> Pedido | None:
@@ -35,7 +40,7 @@ class VentasDAO:
         return pedido
 
     async def metricas_mes(self, anio: int, mes: int) -> tuple[int, float]:
-        """Cantidad y monto de pedidos confirmados/entregados del mes."""
+        """Cantidad y monto de comprobantes relevantes del mes."""
         inicio = date(anio, mes, 1)
         if mes == 12:
             fin = date(anio + 1, 1, 1)
@@ -49,7 +54,10 @@ class VentasDAO:
             )
             .where(Pedido.fecha >= inicio)
             .where(Pedido.fecha < fin)
-            .where(Pedido.estado.in_(("confirmado", "entregado")))
+            .where(
+                Pedido.estado.in_(("confirmado", "entregado", "facturado")),
+                Pedido.tipo.in_(("pedido", "remito", "factura")),
+            )
         )
         resultado = await self._sesion.execute(consulta)
         cantidad, monto = resultado.one()

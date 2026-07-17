@@ -1,7 +1,8 @@
 """Modelos ORM del módulo ventas. Prefijo de tabla: `ventas_`.
 
-Referencias a clientes y productos como IDs débiles (sin ForeignKey
-entre módulos). La FK pedido_id en líneas es interna al módulo.
+`Pedido` es el comprobante tipado (pedido | remito | factura). Se mantiene
+el nombre de tabla `ventas_pedido` para no romper el scaffold.
+Referencias a clientes/productos/depósitos como IDs débiles.
 """
 
 import uuid
@@ -18,15 +19,23 @@ def _nuevo_id() -> str:
 
 
 class Pedido(Base):
-    """Pedido de venta."""
+    """Comprobante de venta tipado."""
 
     __tablename__ = "ventas_pedido"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_nuevo_id)
-    cliente_id: Mapped[str] = mapped_column(String(36))
-    # Estados: borrador | confirmado | entregado | cancelado
+    # pedido | remito | factura
+    tipo: Mapped[str] = mapped_column(String(20), default="pedido", index=True)
+    cliente_id: Mapped[str] = mapped_column(String(36), index=True)
+    # Estados según tipo (ver VentasBO)
     estado: Mapped[str] = mapped_column(String(20), default="borrador")
+    deposito_id: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
+    origen_id: Mapped[str | None] = mapped_column(String(36), nullable=True, default=None)
+    neto: Mapped[float] = mapped_column(Float, default=0.0)
+    iva: Mapped[float] = mapped_column(Float, default=0.0)
     total: Mapped[float] = mapped_column(Float, default=0.0)
+    iva_porcentaje: Mapped[float] = mapped_column(Float, default=21.0)
+    cae: Mapped[str | None] = mapped_column(String(40), nullable=True, default=None)
     fecha: Mapped[date] = mapped_column(Date)
 
     lineas: Mapped[list["LineaPedido"]] = relationship(
@@ -35,13 +44,14 @@ class Pedido(Base):
 
 
 class LineaPedido(Base):
-    """Línea de un pedido."""
+    """Línea de comprobante (snapshot de precio/cantidad)."""
 
     __tablename__ = "ventas_linea"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_nuevo_id)
     pedido_id: Mapped[str] = mapped_column(String(36), ForeignKey("ventas_pedido.id"))
     producto_id: Mapped[str] = mapped_column(String(36))
+    descripcion: Mapped[str] = mapped_column(String(120), default="")
     cantidad: Mapped[int] = mapped_column(Integer)
     precio_unitario: Mapped[float] = mapped_column(Float)
 

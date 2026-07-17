@@ -21,19 +21,31 @@ def test_validar_cantidad_positiva(bo: VentasBO) -> None:
         bo.validar_cantidad(0)
 
 
-def test_transicion_borrador_a_confirmado(bo: VentasBO) -> None:
-    bo.validar_transicion("borrador", "confirmado")
+def test_transicion_pedido_ok(bo: VentasBO) -> None:
+    bo.validar_transicion("pedido", "borrador", "confirmado")
+
+
+def test_transicion_remito_a_facturado(bo: VentasBO) -> None:
+    bo.validar_transicion("remito", "confirmado", "facturado")
 
 
 def test_transicion_invalida(bo: VentasBO) -> None:
     with pytest.raises(ReglaDeNegocioViolada, match="No se puede pasar"):
-        bo.validar_transicion("entregado", "borrador")
+        bo.validar_transicion("factura", "confirmado", "borrador")
 
 
-def test_transicion_mismo_estado(bo: VentasBO) -> None:
-    with pytest.raises(ReglaDeNegocioViolada, match="ya está en estado"):
-        bo.validar_transicion("confirmado", "confirmado")
+def test_confirmacion_remito_sin_deposito(bo: VentasBO) -> None:
+    with pytest.raises(ReglaDeNegocioViolada, match="depósito"):
+        bo.validar_confirmacion_remito("remito", "borrador", None)
 
 
-def test_calcular_total() -> None:
-    assert VentasBO.calcular_total([(2, 10.0), (1, 5.5)]) == 25.5
+def test_conversion_requiere_confirmado(bo: VentasBO) -> None:
+    with pytest.raises(ReglaDeNegocioViolada, match="confirmado"):
+        bo.validar_conversion_a_factura("remito", "borrador")
+
+
+def test_calcular_importes_con_iva() -> None:
+    neto, iva, total = VentasBO.calcular_importes([(2, 100.0)], 21.0)
+    assert neto == 200.0
+    assert iva == 42.0
+    assert total == 242.0
