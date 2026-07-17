@@ -1,0 +1,39 @@
+# Entorno de desarrollo con Docker.
+#   docker compose up --build
+# La API queda en http://localhost:8000 (docs en /docs).
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      VENTAS360_ENTORNO: dev
+      # Conexión al servicio `db` (Postgres) por la red interna de compose.
+      VENTAS360_DATABASE_URL: postgresql+asyncpg://ventas360:ventas360@db:5432/ventas360
+      VENTAS360_JWT_SECRETO: secreto-solo-para-desarrollo
+      VENTAS360_CORS_ORIGINS: http://localhost:4200
+      VENTAS360_SEED_AL_INICIAR: "true"
+    depends_on:
+      db:
+        # Espera a que Postgres acepte conexiones antes de arrancar la API.
+        condition: service_healthy
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ventas360
+      POSTGRES_PASSWORD: ventas360
+      POSTGRES_DB: ventas360
+    ports:
+      # Expuesto al host para inspeccionar la base con psql/DBeaver.
+      - "5432:5432"
+    volumes:
+      - ventas360-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ventas360 -d ventas360"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  ventas360-pgdata:
