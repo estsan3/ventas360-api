@@ -15,6 +15,7 @@ from app.core.seguridad import hashear_password
 from app.modulos.auth.dao import UsuarioDAO
 from app.modulos.auth.models import Usuario
 from app.modulos.clientes.models import Cliente
+from app.modulos.parametros.models import Parametro, Talonario
 from app.modulos.precios.models import ListaPrecio
 from app.modulos.productos.models import Producto
 from app.modulos.stock.models import Deposito, SaldoStock
@@ -156,6 +157,33 @@ async def sembrar_datos_demo() -> None:
             es_default=True,
         )
         sesion.add(lista)
+        sesion.add_all(
+            [
+                Parametro(clave="iva_porcentaje", valor="21.0"),
+                Parametro(clave="moneda", valor="ARS"),
+                Parametro(clave="sucursal_codigo", valor="CENTRAL"),
+                Parametro(clave="sucursal_nombre", valor="Casa central"),
+                Parametro(clave="condiciones_pago", valor="contado,30_dias,60_dias"),
+                Talonario(
+                    id="tal-pedido",
+                    tipo_comprobante="pedido",
+                    prefijo="P-",
+                    proximo_numero=1,
+                ),
+                Talonario(
+                    id="tal-remito",
+                    tipo_comprobante="remito",
+                    prefijo="R-",
+                    proximo_numero=1,
+                ),
+                Talonario(
+                    id="tal-factura",
+                    tipo_comprobante="factura",
+                    prefijo="F-",
+                    proximo_numero=1,
+                ),
+            ]
+        )
         await sesion.flush()
 
         for p in productos:

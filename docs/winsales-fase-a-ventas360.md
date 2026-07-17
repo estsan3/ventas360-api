@@ -135,7 +135,7 @@ flowchart TB
 | A4 stock multi-depósito | Hecho (API base: depósitos/saldos/ajustes) |
 | A5 remitos/facturas tipados | Hecho (API + web: confirmar remito→stock, facturar) |
 | A6–A7 cxc + cobranzas | Hecho (API + web cuenta corriente/recibos) |
-| A8–A9 parámetros/reportería | Pendiente |
+| A8–A9 parámetros/reportería | Hecho (talonarios/sucursal + KPIs dashboard) |
 
 ## Criterios de aceptación Fase A
 
@@ -143,7 +143,7 @@ flowchart TB
 - [x] Crear remito que descuente stock de un depósito.  
 - [x] Convertir remito en factura e imputar CxC.  
 - [x] Registrar recibo que reduzca saldo CxC.  
-- [ ] Dashboard con KPIs desde `/reporteria/kpis`.  
+- [x] Dashboard con KPIs desde `/reporteria/kpis`.  
 - [x] Sin módulos de contabilidad, OC ni taller.
 
 ## Fuera de alcance (explícito)

@@ -36,6 +36,7 @@ class Pedido(Base):
     total: Mapped[float] = mapped_column(Float, default=0.0)
     iva_porcentaje: Mapped[float] = mapped_column(Float, default=21.0)
     cae: Mapped[str | None] = mapped_column(String(40), nullable=True, default=None)
+    numero: Mapped[str | None] = mapped_column(String(40), nullable=True, default=None)
     fecha: Mapped[date] = mapped_column(Date)
 
     lineas: Mapped[list["LineaPedido"]] = relationship(

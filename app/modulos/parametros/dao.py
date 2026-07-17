@@ -1,24 +1,22 @@
-"""Capa DAO del módulo parámetros."""
+"""DAO del módulo parámetros."""
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modulos.parametros.models import Parametro
+from app.modulos.parametros.models import Parametro, Talonario
 
 
 class ParametrosDAO:
-    """Persistencia del almacén clave/valor de configuración."""
+    """Persistencia clave/valor + talonarios."""
 
     def __init__(self, sesion: AsyncSession) -> None:
         self._sesion = sesion
 
     async def obtener_todos(self) -> dict[str, str]:
-        """Devuelve todos los parámetros como diccionario clave → valor."""
         resultado = await self._sesion.execute(select(Parametro))
         return {p.clave: p.valor for p in resultado.scalars()}
 
     async def guardar_varios(self, valores: dict[str, str]) -> None:
-        """Inserta o actualiza cada clave (upsert simple, commit en service)."""
         for clave, valor in valores.items():
             existente = await self._sesion.get(Parametro, clave)
             if existente is None:
@@ -26,3 +24,20 @@ class ParametrosDAO:
             else:
                 existente.valor = valor
         await self._sesion.flush()
+
+    async def listar_talonarios(self) -> list[Talonario]:
+        resultado = await self._sesion.execute(
+            select(Talonario).order_by(Talonario.tipo_comprobante)
+        )
+        return list(resultado.scalars())
+
+    async def buscar_talonario_por_tipo(self, tipo: str) -> Talonario | None:
+        resultado = await self._sesion.execute(
+            select(Talonario).where(Talonario.tipo_comprobante == tipo)
+        )
+        return resultado.scalar_one_or_none()
+
+    async def guardar_talonario(self, talonario: Talonario) -> Talonario:
+        self._sesion.add(talonario)
+        await self._sesion.flush()
+        return talonario

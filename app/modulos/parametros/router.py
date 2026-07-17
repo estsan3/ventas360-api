@@ -7,7 +7,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
 from app.core.dependencias import obtener_usuario_actual, requerir_rol
-from app.modulos.parametros.schemas import ParametrosNegocio, PreferenciasNotificacion
+from app.modulos.parametros.schemas import (
+    ParametrosNegocio,
+    ParametrosOperativos,
+    PreferenciasNotificacion,
+    TalonarioResponse,
+    UpsertTalonarioRequest,
+)
 from app.modulos.parametros.service import ParametrosService
 
 router = APIRouter(
@@ -20,7 +26,6 @@ Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
 
 @router.get("/parametros", response_model=ParametrosNegocio, operation_id="obtener_parametros")
 async def obtener_negocio(sesion: Sesion) -> ParametrosNegocio:
-    """Devuelve los parámetros comerciales (IVA, moneda)."""
     return await ParametrosService(sesion).obtener_negocio()
 
 
@@ -31,8 +36,49 @@ async def obtener_negocio(sesion: Sesion) -> ParametrosNegocio:
     operation_id="guardar_parametros",
 )
 async def guardar_negocio(datos: ParametrosNegocio, sesion: Sesion) -> ParametrosNegocio:
-    """Actualiza los parámetros comerciales. Solo administradores."""
     return await ParametrosService(sesion).guardar_negocio(datos)
+
+
+@router.get(
+    "/parametros/operativos",
+    response_model=ParametrosOperativos,
+    operation_id="obtener_parametros_operativos",
+)
+async def obtener_operativos(sesion: Sesion) -> ParametrosOperativos:
+    return await ParametrosService(sesion).obtener_operativos()
+
+
+@router.put(
+    "/parametros/operativos",
+    response_model=ParametrosOperativos,
+    dependencies=[Depends(requerir_rol("administrador"))],
+    operation_id="guardar_parametros_operativos",
+)
+async def guardar_operativos(
+    datos: ParametrosOperativos, sesion: Sesion
+) -> ParametrosOperativos:
+    return await ParametrosService(sesion).guardar_operativos(datos)
+
+
+@router.get(
+    "/parametros/talonarios",
+    response_model=list[TalonarioResponse],
+    operation_id="listar_talonarios",
+)
+async def listar_talonarios(sesion: Sesion) -> list[TalonarioResponse]:
+    return await ParametrosService(sesion).listar_talonarios()
+
+
+@router.put(
+    "/parametros/talonarios",
+    response_model=TalonarioResponse,
+    dependencies=[Depends(requerir_rol("administrador"))],
+    operation_id="upsert_talonario",
+)
+async def upsert_talonario(
+    datos: UpsertTalonarioRequest, sesion: Sesion
+) -> TalonarioResponse:
+    return await ParametrosService(sesion).upsert_talonario(datos)
 
 
 @router.get(
@@ -41,7 +87,6 @@ async def guardar_negocio(datos: ParametrosNegocio, sesion: Sesion) -> Parametro
     operation_id="obtener_preferencias",
 )
 async def obtener_preferencias(sesion: Sesion) -> PreferenciasNotificacion:
-    """Devuelve las preferencias de notificación del equipo."""
     return await ParametrosService(sesion).obtener_preferencias()
 
 
@@ -53,7 +98,6 @@ async def obtener_preferencias(sesion: Sesion) -> PreferenciasNotificacion:
 async def guardar_preferencias(
     datos: PreferenciasNotificacion, sesion: Sesion
 ) -> PreferenciasNotificacion:
-    """Actualiza las preferencias de notificación."""
     return await ParametrosService(sesion).guardar_preferencias(datos)
 
 
@@ -63,5 +107,4 @@ async def guardar_preferencias(
     operation_id="listar_categorias_producto",
 )
 async def listar_categorias_producto() -> list[str]:
-    """Categorías de producto para la UI de catálogo."""
     return ["Electrónica", "Hogar", "Indumentaria", "Alimentos", "Otros"]

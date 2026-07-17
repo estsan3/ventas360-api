@@ -41,6 +41,7 @@ class PedidoResponse(BaseModel):
     iva_porcentaje: float
     total: float
     cae: str | None = None
+    numero: str | None = None
     fecha: date
     lineas: list[LineaPedidoResponse]
 

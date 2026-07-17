@@ -67,6 +67,12 @@ class VentasService:
         lineas, totales = await self._armar_lineas(datos)
 
         neto, iva, total = self._bo.calcular_importes(totales, negocio.iva_porcentaje)
+        numero: str | None = None
+        try:
+            numero = await self._parametros.asignar_numero(datos.tipo)
+        except RecursoNoEncontrado:
+            numero = None
+
         pedido = Pedido(
             tipo=datos.tipo,
             cliente_id=datos.cliente_id,
@@ -76,6 +82,7 @@ class VentasService:
             iva=iva,
             iva_porcentaje=negocio.iva_porcentaje,
             total=total,
+            numero=numero,
             lineas=lineas,
         )
         await self._dao.guardar(pedido)
@@ -165,6 +172,12 @@ class VentasService:
             )
             for linea in remito.lineas
         ]
+        numero_factura: str | None = None
+        try:
+            numero_factura = await self._parametros.asignar_numero("factura")
+        except RecursoNoEncontrado:
+            numero_factura = None
+
         factura = Pedido(
             tipo="factura",
             cliente_id=remito.cliente_id,
@@ -175,6 +188,7 @@ class VentasService:
             iva=remito.iva,
             iva_porcentaje=remito.iva_porcentaje,
             total=remito.total,
+            numero=numero_factura,
             estado="confirmado",
             lineas=lineas,
         )
