@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
@@ -11,6 +11,7 @@ from app.modulos.productos.schemas import (
     ActualizarProductoRequest,
     CrearProductoRequest,
     ProductoResponse,
+    ProductosPaginaResponse,
 )
 from app.modulos.productos.service import ProductosService
 
@@ -23,10 +24,24 @@ router = APIRouter(
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
 
 
-@router.get("", response_model=list[ProductoResponse], operation_id="listar_productos")
-async def listar_productos(sesion: Sesion) -> list[ProductoResponse]:
-    """Lista todos los productos."""
-    return await ProductosService(sesion).listar()
+@router.get(
+    "",
+    response_model=ProductosPaginaResponse,
+    operation_id="listar_productos",
+)
+async def listar_productos(
+    sesion: Sesion,
+    q: str | None = Query(
+        default=None, description="Busca por SKU, nombre, código de barras, marca o rubro"
+    ),
+    activo: bool | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+) -> ProductosPaginaResponse:
+    """Lista productos con paginación y búsqueda."""
+    return await ProductosService(sesion).listar(
+        q=q, activo=activo, page=page, page_size=page_size
+    )
 
 
 @router.get("/{producto_id}", response_model=ProductoResponse, operation_id="obtener_producto")

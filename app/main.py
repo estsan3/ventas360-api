@@ -21,8 +21,10 @@ from app.modulos.auth.router import router as auth_router
 from app.modulos.auth.router import router_usuarios, router_vendedores
 from app.modulos.clientes.router import router as clientes_router
 from app.modulos.parametros.router import router as parametros_router
+from app.modulos.precios.router import router as precios_router
 from app.modulos.productos.router import router as productos_router
 from app.modulos.reporteria.router import router as reporteria_router
+from app.modulos.stock.router import router as stock_router
 from app.modulos.ventas.eventos import registrar_suscripciones_ventas
 from app.modulos.ventas.router import router as ventas_router
 
@@ -54,8 +56,8 @@ def crear_aplicacion() -> FastAPI:
         title="Ventas360 API",
         description=(
             "Backend modular de Ventas360: administración de ventas y comercio "
-            "con agentes de IA. Módulos: auth, clientes, productos, ventas, "
-            "parámetros y reportería."
+            "con agentes de IA. Módulos: auth, clientes, productos, precios, "
+            "stock, ventas, parámetros y reportería."
         ),
         version="0.1.0",
         lifespan=ciclo_de_vida,
@@ -79,6 +81,8 @@ def crear_aplicacion() -> FastAPI:
     app.include_router(router_vendedores, prefix=prefijo)
     app.include_router(clientes_router, prefix=prefijo)
     app.include_router(productos_router, prefix=prefijo)
+    app.include_router(precios_router, prefix=prefijo)
+    app.include_router(stock_router, prefix=prefijo)
     app.include_router(ventas_router, prefix=prefijo)
     app.include_router(parametros_router, prefix=prefijo)
     app.include_router(reporteria_router, prefix=prefijo)

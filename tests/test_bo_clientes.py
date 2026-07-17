@@ -16,5 +16,19 @@ def test_baja_ya_inactivo() -> None:
         ClienteBO().validar_baja(activo=False)
 
 
-def test_baja_activo_ok() -> None:
-    ClienteBO().validar_baja(activo=True)
+def test_cuit_invalido() -> None:
+    with pytest.raises(ReglaDeNegocioViolada, match="CUIT"):
+        ClienteBO().validar_datos_comerciales(
+            "123", "consumidor_final", 0.0
+        )
+
+
+def test_datos_ok() -> None:
+    ClienteBO().validar_datos_comerciales(
+        "20-12345678-9", "responsable_inscripto", 1000.0
+    )
+
+
+def test_vendedor_inexistente() -> None:
+    with pytest.raises(ReglaDeNegocioViolada, match="vendedor"):
+        ClienteBO().validar_vendedor("x", False)

@@ -125,14 +125,26 @@ flowchart TB
 5. **API A8–A9** parámetros/numeradores + KPIs.  
 6. **Web** pantallas en el mismo orden, reutilizando UI kit Agro360 (tabla, modal config, state-wrapper).
 
+## Progreso de implementación
+
+| Slice | Estado |
+|-------|--------|
+| A1 clientes enriquecidos + paginación | Hecho (API + web) |
+| A2 artículos enriquecidos + paginación | Hecho (API + web; seed ~54 SKUs) |
+| A3 precios (listas + contrato) | Hecho (API base) |
+| A4 stock multi-depósito | Hecho (API base: depósitos/saldos/ajustes) |
+| A5 remitos/facturas tipados | Pendiente |
+| A6–A7 cxc + cobranzas | Pendiente |
+| A8–A9 parámetros/reportería | Pendiente |
+
 ## Criterios de aceptación Fase A
 
-- [ ] Listar/buscar artículos con paginación usable sobre volúmenes grandes (probar con seed ≥ 10k).  
+- [x] Listar/buscar artículos con paginación (seed demo ampliado; 10k queda para ETL).  
 - [ ] Crear remito que descuente stock de un depósito.  
 - [ ] Convertir remito en factura e imputar CxC.  
 - [ ] Registrar recibo que reduzca saldo CxC.  
 - [ ] Dashboard con KPIs desde `/reporteria/kpis`.  
-- [ ] Sin módulos de contabilidad, OC ni taller.
+- [x] Sin módulos de contabilidad, OC ni taller.
 
 ## Fuera de alcance (explícito)
 

@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
@@ -10,6 +10,7 @@ from app.core.dependencias import obtener_usuario_actual, requerir_rol
 from app.modulos.clientes.schemas import (
     ActualizarClienteRequest,
     ClienteResponse,
+    ClientesPaginaResponse,
     CrearClienteRequest,
 )
 from app.modulos.clientes.service import ClientesService
@@ -23,10 +24,22 @@ router = APIRouter(
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
 
 
-@router.get("", response_model=list[ClienteResponse], operation_id="listar_clientes")
-async def listar_clientes(sesion: Sesion) -> list[ClienteResponse]:
-    """Lista todos los clientes."""
-    return await ClientesService(sesion).listar()
+@router.get(
+    "",
+    response_model=ClientesPaginaResponse,
+    operation_id="listar_clientes",
+)
+async def listar_clientes(
+    sesion: Sesion,
+    q: str | None = Query(default=None, description="Busca por nombre, email, teléfono o CUIT"),
+    activo: bool | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+) -> ClientesPaginaResponse:
+    """Lista clientes con paginación y filtros."""
+    return await ClientesService(sesion).listar(
+        q=q, activo=activo, page=page, page_size=page_size
+    )
 
 
 @router.get("/{cliente_id}", response_model=ClienteResponse, operation_id="obtener_cliente")

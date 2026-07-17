@@ -43,7 +43,9 @@ async def crear_tablas() -> None:
     from app.modulos.auth import models as _auth_models  # noqa: F401
     from app.modulos.clientes import models as _clientes_models  # noqa: F401
     from app.modulos.parametros import models as _parametros_models  # noqa: F401
+    from app.modulos.precios import models as _precios_models  # noqa: F401
     from app.modulos.productos import models as _productos_models  # noqa: F401
+    from app.modulos.stock import models as _stock_models  # noqa: F401
     from app.modulos.ventas import models as _ventas_models  # noqa: F401
 
     async with engine.begin() as conexion:

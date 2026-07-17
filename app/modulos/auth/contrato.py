@@ -29,6 +29,10 @@ class ContratoAuth(Protocol):
         """Usuarios activos con el rol dado (ej: 'vendedor')."""
         ...
 
+    async def existe_usuario(self, usuario_id: str) -> bool:
+        """True si el usuario existe (activo o no)."""
+        ...
+
 
 class AuthLocal:
     """Implementación local del contrato (mismo proceso, misma base)."""
@@ -39,3 +43,6 @@ class AuthLocal:
     async def listar_por_rol(self, rol: str) -> list[UsuarioResumen]:
         usuarios = await self._dao.listar_por_rol(rol)
         return [UsuarioResumen(id=u.id, nombre=u.nombre, rol=u.rol) for u in usuarios]
+
+    async def existe_usuario(self, usuario_id: str) -> bool:
+        return await self._dao.buscar_por_id(usuario_id) is not None
