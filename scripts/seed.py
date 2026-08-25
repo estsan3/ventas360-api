@@ -4,7 +4,7 @@ Se ejecuta automáticamente al iniciar la API en dev (si la base está vacía)
 o manualmente con:
     poetry run python -m scripts.seed
 
-Si el esquema cambió (Fase A), borrá `data/ventas360.db` y volvé a sembrar.
+Si el esquema cambió (tenant_id), borrá `data/ventas360.db` y volvé a sembrar.
 """
 
 import asyncio
@@ -22,13 +22,38 @@ from app.modulos.precios.models import ListaPrecio
 from app.modulos.productos.models import Producto
 from app.modulos.proveedores.models import Proveedor
 from app.modulos.stock.models import Deposito, SaldoStock
-from app.modulos.tenants.ids import ID_TENANT_DEMO, NOMBRE_TENANT_DEMO, SLUG_TENANT_DEMO
+from app.modulos.tenants.ids import (
+    EMAIL_SUPERADMIN,
+    ID_TENANT_DEMO,
+    ID_USUARIO_SUPERADMIN,
+    NOMBRE_TENANT_DEMO,
+    SLUG_TENANT_DEMO,
+)
 from app.modulos.tenants.models import Tenant
 from app.modulos.ventas.models import LineaPedido, Pedido
 from app.modulos.zonas.models import Zona
 
 EMAIL_DEMO = "admin@ventas360.com"
 PASSWORD_DEMO = "demo12345"
+
+
+async def _asegurar_superadmin_plataforma(sesion) -> None:
+    """Usuario de plataforma (tenant_id nulo). Idempotente."""
+    dao = UsuarioDAO(sesion)
+    if await dao.buscar_por_email(EMAIL_SUPERADMIN) is not None:
+        return
+    sesion.add(
+        Usuario(
+            id=ID_USUARIO_SUPERADMIN,
+            nombre="Superadmin Plataforma",
+            dni="00000000",
+            email=EMAIL_SUPERADMIN,
+            password_hash=hashear_password(PASSWORD_DEMO),
+            rol="superadmin",
+            tenant_id=None,
+        )
+    )
+    await sesion.commit()
 
 
 async def _asegurar_tenant_demo(sesion) -> None:
@@ -106,14 +131,16 @@ async def _asegurar_tesoreria_demo(sesion) -> None:
 
 
 async def sembrar_datos_demo() -> None:
-    """Inserta admin, catálogos, stock, precios y pedidos de demo."""
+    """Inserta superadmin de plataforma, comercio demo y catálogos."""
     async with fabrica_sesiones() as sesion:
+        await _asegurar_superadmin_plataforma(sesion)
         await _asegurar_tenant_demo(sesion)
         with usando_tenant(ID_TENANT_DEMO):
             await _sembrar_en_tenant(sesion)
 
 
 async def _sembrar_en_tenant(sesion) -> None:
+    from app.modulos.tenants.service import TenantsService
     from scripts.seed_casuistica import (
     asegurar_casuistica_mostrador,
     asegurar_casuistica_rica,
@@ -121,6 +148,9 @@ async def _sembrar_en_tenant(sesion) -> None:
     )
 
     dao = UsuarioDAO(sesion)
+    await TenantsService(sesion).asegurar_permisos_default(ID_TENANT_DEMO)
+    await sesion.commit()
+
     if await dao.buscar_por_email(EMAIL_DEMO) is not None:
         await _asegurar_zonas_demo(sesion)
         await _asegurar_proveedores_demo(sesion)
@@ -421,7 +451,11 @@ if __name__ == "__main__":
     async def _main() -> None:
         await crear_tablas()
         await sembrar_datos_demo()
-        print(f"Seed listo. Login demo: {EMAIL_DEMO} / {PASSWORD_DEMO}")
+        print("Seed listo.")
+        print(f"  Comercio:  {EMAIL_DEMO} / {PASSWORD_DEMO}  → demo.localhost:4201")
+        print(
+            f"  Plataforma: {EMAIL_SUPERADMIN} / {PASSWORD_DEMO}  → admin.localhost:4201"
+        )
         print("Casuística: clientes, productos, comprobantes, compras, cta. cte.,")
         print("mostrador (≥50 clientes con remitos ≥5 ítems y saldos debe/a favor).")
         print("CxC: remitos confirmados/facturados imputan debe.")

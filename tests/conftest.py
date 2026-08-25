@@ -17,11 +17,16 @@ from app.core.database import fabrica_sesiones
 from app.core.seguridad import hashear_password
 from app.main import app
 from app.modulos.auth.models import Usuario
-from app.modulos.tenants.ids import ID_TENANT_DEMO, NOMBRE_TENANT_DEMO, SLUG_TENANT_DEMO
+from app.modulos.tenants.ids import (
+    EMAIL_SUPERADMIN,
+    ID_TENANT_DEMO,
+    ID_USUARIO_SUPERADMIN,
+    NOMBRE_TENANT_DEMO,
+    SLUG_TENANT_DEMO,
+)
 from app.modulos.tenants.models import Tenant
 
 EMAIL_TEST = "admin@ventas360.com"
-EMAIL_SUPERADMIN = "super@ventas360.com"
 PASSWORD_TEST = "demo12345"
 ORIGIN_DEMO = "http://demo.localhost:4201"
 ORIGIN_PLATAFORMA = "http://admin.localhost:4201"
@@ -93,6 +98,7 @@ async def token_superadmin(cliente) -> str:
         if await UsuarioDAO(sesion).buscar_por_email(EMAIL_SUPERADMIN) is None:
             sesion.add(
                 Usuario(
+                    id=ID_USUARIO_SUPERADMIN,
                     nombre="Superadmin Plataforma",
                     dni="00000000",
                     email=EMAIL_SUPERADMIN,
@@ -106,6 +112,7 @@ async def token_superadmin(cliente) -> str:
     respuesta = await cliente.post(
         "/api/v1/auth/login",
         json={"email": EMAIL_SUPERADMIN, "password": PASSWORD_TEST},
+        headers={"Origin": ORIGIN_PLATAFORMA},
     )
     return respuesta.json()["access_token"]
 

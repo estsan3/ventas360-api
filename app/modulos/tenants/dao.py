@@ -3,7 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.modulos.tenants.models import Tenant
+from app.modulos.tenants.models import PermisoRol, Tenant
 
 
 class TenantDAO:
@@ -30,3 +30,28 @@ class TenantDAO:
         self._sesion.add(tenant)
         await self._sesion.flush()
         return tenant
+
+    async def listar_permisos(self, tenant_id: str) -> list[PermisoRol]:
+        resultado = await self._sesion.execute(
+            select(PermisoRol)
+            .where(PermisoRol.tenant_id == tenant_id)
+            .order_by(PermisoRol.rol, PermisoRol.modulo)
+        )
+        return list(resultado.scalars())
+
+    async def buscar_permiso(
+        self, tenant_id: str, rol: str, modulo: str
+    ) -> PermisoRol | None:
+        resultado = await self._sesion.execute(
+            select(PermisoRol).where(
+                PermisoRol.tenant_id == tenant_id,
+                PermisoRol.rol == rol,
+                PermisoRol.modulo == modulo,
+            )
+        )
+        return resultado.scalar_one_or_none()
+
+    async def guardar_permiso(self, permiso: PermisoRol) -> PermisoRol:
+        self._sesion.add(permiso)
+        await self._sesion.flush()
+        return permiso

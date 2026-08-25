@@ -67,3 +67,22 @@ class ContextoHostResponse(BaseModel):
     tipo: TipoContextoHost
     slug: str | None = None
     tenant: TenantPublico | None = None
+
+
+class CeldaPermisoResponse(BaseModel):
+    modulo: str
+    etiqueta: str
+    vendedor: bool
+    encargado: bool
+    administrador: bool = True
+
+
+class MatrizPermisosResponse(BaseModel):
+    items: list[CeldaPermisoResponse]
+
+
+class ActualizarPermisosRequest(BaseModel):
+    """Solo Vendedor o Encargado. El administrador no se edita."""
+
+    rol: Literal["vendedor", "encargado"]
+    modulos: dict[str, bool]

@@ -53,6 +53,7 @@ async def test_superadmin_crea_comercio_con_primer_admin(
 
     login = await cliente.post(
         "/api/v1/auth/login",
+        headers={"Origin": "http://kiosco-milka.localhost:4201"},
         json={
             "email": payload["administrador"]["email"],
             "password": "demo12345",

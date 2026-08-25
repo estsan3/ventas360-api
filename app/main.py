@@ -33,6 +33,7 @@ from app.modulos.proveedores.router import router as proveedores_router
 from app.modulos.reporteria.router import router as reporteria_router
 from app.modulos.stock.router import router as stock_router
 from app.modulos.tenants.router import router as tenants_router
+from app.modulos.tenants.router import router_comercio as tenants_comercio_router
 from app.modulos.tenants.router import router_plataforma as tenants_plataforma_router
 from app.modulos.ventas.eventos import registrar_suscripciones_ventas
 from app.modulos.ventas.router import router as ventas_router
@@ -87,6 +88,7 @@ def crear_aplicacion() -> FastAPI:
 
     prefijo = "/api/v1"
     app.include_router(tenants_router, prefix=prefijo)
+    app.include_router(tenants_comercio_router, prefix=prefijo)
     app.include_router(tenants_plataforma_router, prefix=prefijo)
     app.include_router(auth_router, prefix=prefijo)
     app.include_router(router_usuarios, prefix=prefijo)

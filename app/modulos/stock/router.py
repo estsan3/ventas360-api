@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
-from app.core.dependencias import obtener_usuario_actual, requerir_rol
 from app.modulos.stock.schemas import (
     ActualizarDepositoRequest,
     AjusteStockRequest,
@@ -16,12 +15,12 @@ from app.modulos.stock.schemas import (
     SaldoResponse,
 )
 from app.modulos.stock.service import StockService
-from app.modulos.tenants.dependencias import fijar_tenant_de_host
+from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
 
 router = APIRouter(
     prefix="/stock",
     tags=["Stock"],
-    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
+    dependencies=[Depends(exigir_usuario_del_comercio)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
@@ -30,6 +29,7 @@ Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
 @router.get(
     "/depositos",
     response_model=list[DepositoResponse],
+    dependencies=[Depends(requerir_modulo("stock", "mostrador"))],
     operation_id="listar_depositos",
 )
 async def listar_depositos(sesion: Sesion) -> list[DepositoResponse]:
@@ -40,7 +40,7 @@ async def listar_depositos(sesion: Sesion) -> list[DepositoResponse]:
     "/depositos",
     response_model=DepositoResponse,
     status_code=201,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("stock"))],
     operation_id="crear_deposito",
 )
 async def crear_deposito(
@@ -52,7 +52,7 @@ async def crear_deposito(
 @router.put(
     "/depositos/{deposito_id}",
     response_model=DepositoResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("stock"))],
     operation_id="actualizar_deposito",
 )
 async def actualizar_deposito(
@@ -64,7 +64,7 @@ async def actualizar_deposito(
 @router.patch(
     "/depositos/{deposito_id}/desactivar",
     response_model=DepositoResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("stock"))],
     operation_id="desactivar_deposito",
 )
 async def desactivar_deposito(deposito_id: str, sesion: Sesion) -> DepositoResponse:
@@ -74,6 +74,7 @@ async def desactivar_deposito(deposito_id: str, sesion: Sesion) -> DepositoRespo
 @router.get(
     "/articulos/{articulo_id}/saldos",
     response_model=list[SaldoResponse],
+    dependencies=[Depends(requerir_modulo("stock", "mostrador"))],
     operation_id="listar_saldos_articulo",
 )
 async def listar_saldos_articulo(
@@ -85,6 +86,7 @@ async def listar_saldos_articulo(
 @router.get(
     "/depositos/{deposito_id}/inventario",
     response_model=list[InventarioItemResponse],
+    dependencies=[Depends(requerir_modulo("stock", "mostrador"))],
     operation_id="listar_inventario_deposito",
 )
 async def listar_inventario_deposito(
@@ -96,7 +98,7 @@ async def listar_inventario_deposito(
 @router.post(
     "/ajustes",
     response_model=SaldoResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("stock"))],
     operation_id="ajustar_stock",
 )
 async def ajustar_stock(datos: AjusteStockRequest, sesion: Sesion) -> SaldoResponse:

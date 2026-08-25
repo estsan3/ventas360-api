@@ -3,7 +3,7 @@
 from app.core.excepciones import NoAutenticado, ReglaDeNegocioViolada
 from app.core.seguridad import verificar_password
 
-ROLES_VALIDOS = {"administrador", "vendedor"}
+ROLES_VALIDOS = {"administrador", "encargado", "vendedor"}
 
 
 class UsuarioBO:
@@ -30,3 +30,26 @@ class UsuarioBO:
             raise ReglaDeNegocioViolada("No podés darte de baja a vos mismo")
         if es_ultimo_administrador:
             raise ReglaDeNegocioViolada("No se puede eliminar al último administrador")
+
+    def validar_login_host(
+        self,
+        *,
+        tenant_id_usuario: str | None,
+        rol: str,
+        tipo_host: str,
+        tenant_id_host: str | None,
+    ) -> None:
+        """El usuario solo entra en el host de su comercio (o admin.* si es superadmin)."""
+        if tipo_host == "plataforma":
+            if rol != "superadmin" or tenant_id_usuario is not None:
+                raise NoAutenticado(
+                    "El acceso a la plataforma es solo para superadmin"
+                )
+            return
+        if tipo_host != "comercio" or not tenant_id_host:
+            raise NoAutenticado(
+                "Entrá con el subdominio de tu comercio "
+                "(ej. agronorte.localhost:4201)."
+            )
+        if tenant_id_usuario != tenant_id_host:
+            raise NoAutenticado("Este usuario no pertenece a este comercio")

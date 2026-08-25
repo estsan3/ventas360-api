@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
-from app.core.dependencias import obtener_usuario_actual, requerir_rol
 from app.modulos.clientes.schemas import (
     ActualizarClienteRequest,
     ClienteResponse,
@@ -14,12 +13,12 @@ from app.modulos.clientes.schemas import (
     CrearClienteRequest,
 )
 from app.modulos.clientes.service import ClientesService
-from app.modulos.tenants.dependencias import fijar_tenant_de_host
+from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
 
 router = APIRouter(
     prefix="/clientes",
     tags=["Clientes"],
-    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
+    dependencies=[Depends(exigir_usuario_del_comercio)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
@@ -28,6 +27,7 @@ Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
 @router.get(
     "",
     response_model=ClientesPaginaResponse,
+    dependencies=[Depends(requerir_modulo("clientes", "mostrador", "cta_cte"))],
     operation_id="listar_clientes",
 )
 async def listar_clientes(
@@ -43,7 +43,12 @@ async def listar_clientes(
     )
 
 
-@router.get("/{cliente_id}", response_model=ClienteResponse, operation_id="obtener_cliente")
+@router.get(
+    "/{cliente_id}",
+    response_model=ClienteResponse,
+    dependencies=[Depends(requerir_modulo("clientes", "mostrador", "cta_cte"))],
+    operation_id="obtener_cliente",
+)
 async def obtener_cliente(cliente_id: str, sesion: Sesion) -> ClienteResponse:
     """Obtiene un cliente por ID."""
     return await ClientesService(sesion).obtener(cliente_id)
@@ -53,33 +58,33 @@ async def obtener_cliente(cliente_id: str, sesion: Sesion) -> ClienteResponse:
     "",
     response_model=ClienteResponse,
     status_code=201,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("clientes"))],
     operation_id="crear_cliente",
 )
 async def crear_cliente(datos: CrearClienteRequest, sesion: Sesion) -> ClienteResponse:
-    """Alta de cliente. Solo administradores."""
+    """Alta de cliente. Requiere módulo Clientes."""
     return await ClientesService(sesion).crear(datos)
 
 
 @router.put(
     "/{cliente_id}",
     response_model=ClienteResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("clientes"))],
     operation_id="actualizar_cliente",
 )
 async def actualizar_cliente(
     cliente_id: str, datos: ActualizarClienteRequest, sesion: Sesion
 ) -> ClienteResponse:
-    """Actualiza un cliente. Solo administradores."""
+    """Actualiza un cliente. Requiere módulo Clientes."""
     return await ClientesService(sesion).actualizar(cliente_id, datos)
 
 
 @router.patch(
     "/{cliente_id}/desactivar",
     response_model=ClienteResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("clientes"))],
     operation_id="desactivar_cliente",
 )
 async def desactivar_cliente(cliente_id: str, sesion: Sesion) -> ClienteResponse:
-    """Baja lógica de un cliente. Solo administradores."""
+    """Baja lógica de un cliente. Requiere módulo Clientes."""
     return await ClientesService(sesion).desactivar(cliente_id)

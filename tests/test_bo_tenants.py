@@ -55,3 +55,44 @@ def test_clasificar_sin_subdominio(bo: TenantsBO) -> None:
 
 def test_extraer_de_origin_con_esquema(bo: TenantsBO) -> None:
     assert bo.extraer_etiqueta("http://milka.localhost:4201/") == "milka"
+
+
+def test_admin_siempre_tiene_todos_los_modulos(bo: TenantsBO) -> None:
+    mods = bo.resolver_modulos("administrador", {"inicio": False, "mostrador": False})
+    assert "configuracion" in mods
+    assert set(mods) >= {
+        "inicio",
+        "mostrador",
+        "cta_cte",
+        "articulos",
+        "stock",
+        "clientes",
+        "ventas",
+        "compras",
+        "configuracion",
+    }
+
+
+def test_vendedor_default_inicio_mostrador_cta_cte(bo: TenantsBO) -> None:
+    assert bo.resolver_modulos("vendedor", None) == ["inicio", "mostrador", "cta_cte"]
+
+
+def test_encargado_default_incluye_articulos_y_stock(bo: TenantsBO) -> None:
+    mods = bo.resolver_modulos("encargado", None)
+    assert mods == ["inicio", "mostrador", "cta_cte", "articulos", "stock"]
+    assert "clientes" not in mods
+    assert "configuracion" not in mods
+
+
+def test_superadmin_sin_modulos_de_comercio(bo: TenantsBO) -> None:
+    assert bo.resolver_modulos("superadmin", None) == []
+
+
+def test_no_se_edita_rol_administrador(bo: TenantsBO) -> None:
+    with pytest.raises(ReglaDeNegocioViolada, match="Vendedor y Encargado"):
+        bo.validar_actualizacion_permisos("administrador", {"inicio": True})
+
+
+def test_modulo_desconocido_en_matriz(bo: TenantsBO) -> None:
+    with pytest.raises(ReglaDeNegocioViolada, match="no configurable"):
+        bo.validar_actualizacion_permisos("vendedor", {"inicio": True, "secreto": True})

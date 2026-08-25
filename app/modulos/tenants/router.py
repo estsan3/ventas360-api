@@ -7,12 +7,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
 from app.core.dependencias import requerir_rol
-from app.modulos.tenants.dependencias import exigir_host_plataforma
+from app.modulos.tenants.dependencias import (
+    exigir_host_plataforma,
+    exigir_usuario_del_comercio,
+    requerir_modulo,
+)
 from app.modulos.tenants.host import hostname_desde_request
 from app.modulos.tenants.schemas import (
+    ActualizarPermisosRequest,
     ActualizarTenantRequest,
     ContextoHostResponse,
     CrearTenantRequest,
+    MatrizPermisosResponse,
     TenantCreadoResponse,
     TenantResponse,
 )
@@ -26,6 +32,15 @@ router_plataforma = APIRouter(
     dependencies=[
         Depends(exigir_host_plataforma),
         Depends(requerir_rol("superadmin")),
+    ],
+)
+
+router_comercio = APIRouter(
+    prefix="/tenants",
+    tags=["Tenants"],
+    dependencies=[
+        Depends(exigir_usuario_del_comercio),
+        Depends(requerir_modulo("configuracion")),
     ],
 )
 
@@ -85,3 +100,25 @@ async def actualizar_tenant(
 ) -> TenantResponse:
     """Edita nombre comercial o activo. El slug es de solo lectura."""
     return await TenantsService(sesion).actualizar(tenant_id, datos)
+
+
+@router_comercio.get(
+    "/permisos",
+    response_model=MatrizPermisosResponse,
+    operation_id="obtener_matriz_permisos",
+)
+async def obtener_matriz_permisos(sesion: Sesion) -> MatrizPermisosResponse:
+    """Matriz módulo × rol. El administrador no se edita."""
+    return await TenantsService(sesion).obtener_matriz()
+
+
+@router_comercio.put(
+    "/permisos",
+    response_model=MatrizPermisosResponse,
+    operation_id="actualizar_matriz_permisos",
+)
+async def actualizar_matriz_permisos(
+    datos: ActualizarPermisosRequest, sesion: Sesion
+) -> MatrizPermisosResponse:
+    """Edita tildes de Vendedor o Encargado."""
+    return await TenantsService(sesion).actualizar_permisos(datos)

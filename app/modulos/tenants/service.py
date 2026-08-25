@@ -4,15 +4,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import obtener_configuracion
 from app.core.excepciones import RecursoNoEncontrado, ReglaDeNegocioViolada
+from app.core.tenant_ctx import tenant_id_actual, usando_tenant
 from app.modulos.auth.contrato import AuthLocal, ContratoAuth
-from app.modulos.tenants.bo import TIPO_PLATAFORMA, TIPO_SIN_SLUG, TenantsBO
+from app.modulos.tenants.bo import (
+    MODULOS_MATRIZ,
+    ROLES_EDITABLES,
+    TIPO_PLATAFORMA,
+    TIPO_SIN_SLUG,
+    TenantsBO,
+)
 from app.modulos.tenants.dao import TenantDAO
-from app.modulos.tenants.models import Tenant
+from app.modulos.tenants.models import PermisoRol, Tenant
 from app.modulos.tenants.schemas import (
+    ActualizarPermisosRequest,
     ActualizarTenantRequest,
     AdministradorCreadoResponse,
+    CeldaPermisoResponse,
     ContextoHostResponse,
     CrearTenantRequest,
+    MatrizPermisosResponse,
     TenantCreadoResponse,
     TenantPublico,
     TenantResponse,
@@ -83,6 +93,8 @@ class TenantsService:
             email=str(admin.email),
             password=admin.password,
         )
+        with usando_tenant(tenant.id):
+            await self.asegurar_permisos_default(tenant.id)
         await self._sesion.commit()
         return TenantCreadoResponse(
             id=tenant.id,
@@ -109,6 +121,74 @@ class TenantsService:
         await self._dao.guardar(tenant)
         await self._sesion.commit()
         return TenantResponse.model_validate(tenant)
+
+    async def asegurar_permisos_default(self, tenant_id: str) -> None:
+        """Escribe la matriz default si el comercio aún no tiene filas. Sin commit."""
+        existentes = await self._dao.listar_permisos(tenant_id)
+        if existentes:
+            return
+        for rol in ROLES_EDITABLES:
+            for modulo, _etiqueta, vend, enc in self._bo.celdas_default():
+                habilitado = vend if rol == "vendedor" else enc
+                await self._dao.guardar_permiso(
+                    PermisoRol(
+                        tenant_id=tenant_id,
+                        rol=rol,
+                        modulo=modulo,
+                        habilitado=habilitado,
+                    )
+                )
+
+    async def modulos_habilitados(self, tenant_id: str, rol: str) -> list[str]:
+        filas = await self._dao.listar_permisos(tenant_id)
+        por_rol = {p.modulo: p.habilitado for p in filas if p.rol == rol}
+        return self._bo.resolver_modulos(rol, por_rol or None)
+
+    async def obtener_matriz(self) -> MatrizPermisosResponse:
+        tenant_id = tenant_id_actual()
+        filas = await self._dao.listar_permisos(tenant_id)
+        if not filas:
+            await self.asegurar_permisos_default(tenant_id)
+            await self._sesion.commit()
+            filas = await self._dao.listar_permisos(tenant_id)
+        vend = {p.modulo: p.habilitado for p in filas if p.rol == "vendedor"}
+        enc = {p.modulo: p.habilitado for p in filas if p.rol == "encargado"}
+        items = []
+        for modulo, etiqueta, def_v, def_e in self._bo.celdas_default():
+            items.append(
+                CeldaPermisoResponse(
+                    modulo=modulo,
+                    etiqueta=etiqueta,
+                    vendedor=vend.get(modulo, def_v),
+                    encargado=enc.get(modulo, def_e),
+                    administrador=True,
+                )
+            )
+        return MatrizPermisosResponse(items=items)
+
+    async def actualizar_permisos(
+        self, datos: ActualizarPermisosRequest
+    ) -> MatrizPermisosResponse:
+        self._bo.validar_actualizacion_permisos(datos.rol, datos.modulos)
+        tenant_id = tenant_id_actual()
+        await self.asegurar_permisos_default(tenant_id)
+        for modulo in MODULOS_MATRIZ:
+            habilitado = datos.modulos.get(modulo, False)
+            existente = await self._dao.buscar_permiso(tenant_id, datos.rol, modulo)
+            if existente is None:
+                await self._dao.guardar_permiso(
+                    PermisoRol(
+                        tenant_id=tenant_id,
+                        rol=datos.rol,
+                        modulo=modulo,
+                        habilitado=habilitado,
+                    )
+                )
+            else:
+                existente.habilitado = habilitado
+                await self._dao.guardar_permiso(existente)
+        await self._sesion.commit()
+        return await self.obtener_matriz()
 
     async def _buscar_o_fallar(self, tenant_id: str) -> Tenant:
         tenant = await self._dao.buscar_por_id(tenant_id)

@@ -18,6 +18,8 @@ class UsuarioResponse(BaseModel):
     dni: str
     email: str
     rol: str
+    tenant_id: str | None = None
+    permisos: list[str] = []
 
     # Permite construir el DTO directamente desde el modelo ORM.
     model_config = {"from_attributes": True}
@@ -43,7 +45,7 @@ class CrearUsuarioRequest(BaseModel):
     dni: str = Field(min_length=6, max_length=20)
     email: EmailStr
     password: str | None = Field(default=None, min_length=8)
-    rol: str = Field(pattern="^(administrador|vendedor)$")
+    rol: str = Field(pattern="^(administrador|encargado|vendedor)$")
 
 
 class CrearVendedorRequest(BaseModel):

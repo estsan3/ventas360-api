@@ -16,6 +16,34 @@ TIPO_PLATAFORMA = "plataforma"
 TIPO_COMERCIO = "comercio"
 TIPO_SIN_SLUG = "sin_slug"
 
+MODULO_CONFIGURACION = "configuracion"
+MODULOS_MATRIZ = (
+    "inicio",
+    "mostrador",
+    "cta_cte",
+    "articulos",
+    "stock",
+    "clientes",
+    "ventas",
+    "compras",
+)
+ETIQUETAS_MODULO = {
+    "inicio": "Inicio",
+    "mostrador": "Mostrador",
+    "cta_cte": "Cta. cte.",
+    "articulos": "Artículos",
+    "stock": "Stock",
+    "clientes": "Clientes",
+    "ventas": "Presup. / Pedidos / Remitos",
+    "compras": "Compras / Caja / Bancos",
+}
+ROLES_EDITABLES = ("vendedor", "encargado")
+ROL_ADMINISTRADOR = "administrador"
+DEFAULTS_HABILITADOS: dict[str, frozenset[str]] = {
+    "vendedor": frozenset({"inicio", "mostrador", "cta_cte"}),
+    "encargado": frozenset({"inicio", "mostrador", "cta_cte", "articulos", "stock"}),
+}
+
 
 class TenantsBO:
     """Reglas de slug, nombre comercial y lectura del Host/Origin."""
@@ -67,3 +95,37 @@ class TenantsBO:
         if etiqueta == plataforma:
             return TIPO_PLATAFORMA, None
         return TIPO_COMERCIO, etiqueta
+
+    def resolver_modulos(
+        self, rol: str, filas_rol: dict[str, bool] | None
+    ) -> list[str]:
+        """Módulos habilitados para el rol. Admin siempre todo (incluida Config)."""
+        if rol == "superadmin":
+            return []
+        if rol == ROL_ADMINISTRADOR:
+            return [*MODULOS_MATRIZ, MODULO_CONFIGURACION]
+        defaults = DEFAULTS_HABILITADOS.get(rol, frozenset())
+        if not filas_rol:
+            return [m for m in MODULOS_MATRIZ if m in defaults]
+        return [m for m in MODULOS_MATRIZ if filas_rol.get(m, False)]
+
+    def validar_actualizacion_permisos(
+        self, rol: str, modulos: dict[str, bool]
+    ) -> None:
+        if rol not in ROLES_EDITABLES:
+            raise ReglaDeNegocioViolada(
+                "Solo se editan los permisos de Vendedor y Encargado"
+            )
+        desconocidos = [m for m in modulos if m not in MODULOS_MATRIZ]
+        if desconocidos:
+            raise ReglaDeNegocioViolada(
+                f"Módulo no configurable: {desconocidos[0]}"
+            )
+
+    def celdas_default(self) -> list[tuple[str, str, bool, bool]]:
+        """(modulo, etiqueta, vendedor, encargado) para armar la matriz."""
+        vend = DEFAULTS_HABILITADOS["vendedor"]
+        enc = DEFAULTS_HABILITADOS["encargado"]
+        return [
+            (m, ETIQUETAS_MODULO[m], m in vend, m in enc) for m in MODULOS_MATRIZ
+        ]

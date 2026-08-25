@@ -6,15 +6,17 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
-from app.core.dependencias import obtener_usuario_actual
 from app.modulos.reporteria.schemas import KpisResponse
 from app.modulos.reporteria.service import ReporteriaService
-from app.modulos.tenants.dependencias import fijar_tenant_de_host
+from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
 
 router = APIRouter(
     prefix="/reporteria",
     tags=["Reportería"],
-    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
+    dependencies=[
+        Depends(exigir_usuario_del_comercio),
+        Depends(requerir_modulo("inicio")),
+    ],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]

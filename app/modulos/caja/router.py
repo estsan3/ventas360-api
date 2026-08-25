@@ -7,19 +7,21 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
-from app.core.dependencias import obtener_usuario_actual, requerir_rol
 from app.modulos.caja.schemas import (
     CrearMovimientoCajaRequest,
     MovimientoCajaResponse,
     SaldoCajaResponse,
 )
 from app.modulos.caja.service import CajaService
-from app.modulos.tenants.dependencias import fijar_tenant_de_host
+from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
 
 router = APIRouter(
     prefix="/caja",
     tags=["Caja"],
-    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
+    dependencies=[
+        Depends(exigir_usuario_del_comercio),
+        Depends(requerir_modulo("compras")),
+    ],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
@@ -49,7 +51,6 @@ async def saldo_caja(
     "/movimientos",
     response_model=MovimientoCajaResponse,
     status_code=201,
-    dependencies=[Depends(requerir_rol("administrador"))],
     operation_id="crear_movimiento_caja",
 )
 async def crear_movimiento(

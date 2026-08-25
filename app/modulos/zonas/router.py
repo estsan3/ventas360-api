@@ -6,8 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
-from app.core.dependencias import obtener_usuario_actual, requerir_rol
-from app.modulos.tenants.dependencias import fijar_tenant_de_host
+from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
 from app.modulos.zonas.schemas import (
     ActualizarZonaRequest,
     CrearZonaRequest,
@@ -19,13 +18,18 @@ from app.modulos.zonas.service import ZonasService
 router = APIRouter(
     prefix="/zonas",
     tags=["Zonas"],
-    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
+    dependencies=[Depends(exigir_usuario_del_comercio)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
 
 
-@router.get("", response_model=ZonasPaginaResponse, operation_id="listar_zonas")
+@router.get(
+    "",
+    response_model=ZonasPaginaResponse,
+    dependencies=[Depends(requerir_modulo("clientes", "configuracion"))],
+    operation_id="listar_zonas",
+)
 async def listar_zonas(
     sesion: Sesion,
     q: str | None = Query(default=None),
@@ -38,7 +42,12 @@ async def listar_zonas(
     )
 
 
-@router.get("/{zona_id}", response_model=ZonaResponse, operation_id="obtener_zona")
+@router.get(
+    "/{zona_id}",
+    response_model=ZonaResponse,
+    dependencies=[Depends(requerir_modulo("clientes", "configuracion"))],
+    operation_id="obtener_zona",
+)
 async def obtener_zona(zona_id: str, sesion: Sesion) -> ZonaResponse:
     return await ZonasService(sesion).obtener(zona_id)
 
@@ -47,7 +56,7 @@ async def obtener_zona(zona_id: str, sesion: Sesion) -> ZonaResponse:
     "",
     response_model=ZonaResponse,
     status_code=201,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("clientes", "configuracion"))],
     operation_id="crear_zona",
 )
 async def crear_zona(datos: CrearZonaRequest, sesion: Sesion) -> ZonaResponse:
@@ -57,7 +66,7 @@ async def crear_zona(datos: CrearZonaRequest, sesion: Sesion) -> ZonaResponse:
 @router.put(
     "/{zona_id}",
     response_model=ZonaResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("clientes", "configuracion"))],
     operation_id="actualizar_zona",
 )
 async def actualizar_zona(
@@ -69,7 +78,7 @@ async def actualizar_zona(
 @router.patch(
     "/{zona_id}/desactivar",
     response_model=ZonaResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("clientes", "configuracion"))],
     operation_id="desactivar_zona",
 )
 async def desactivar_zona(zona_id: str, sesion: Sesion) -> ZonaResponse:

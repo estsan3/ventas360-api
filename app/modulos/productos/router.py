@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
-from app.core.dependencias import obtener_usuario_actual, requerir_rol
 from app.modulos.productos.schemas import (
     ActualizarProductoRequest,
     CrearProductoRequest,
@@ -14,12 +13,12 @@ from app.modulos.productos.schemas import (
     ProductosPaginaResponse,
 )
 from app.modulos.productos.service import ProductosService
-from app.modulos.tenants.dependencias import fijar_tenant_de_host
+from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
 
 router = APIRouter(
     prefix="/productos",
     tags=["Productos"],
-    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
+    dependencies=[Depends(exigir_usuario_del_comercio)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
@@ -28,6 +27,7 @@ Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
 @router.get(
     "",
     response_model=ProductosPaginaResponse,
+    dependencies=[Depends(requerir_modulo("articulos", "mostrador", "cta_cte"))],
     operation_id="listar_productos",
 )
 async def listar_productos(
@@ -45,7 +45,12 @@ async def listar_productos(
     )
 
 
-@router.get("/{producto_id}", response_model=ProductoResponse, operation_id="obtener_producto")
+@router.get(
+    "/{producto_id}",
+    response_model=ProductoResponse,
+    dependencies=[Depends(requerir_modulo("articulos", "mostrador", "cta_cte"))],
+    operation_id="obtener_producto",
+)
 async def obtener_producto(producto_id: str, sesion: Sesion) -> ProductoResponse:
     """Obtiene un producto por ID."""
     return await ProductosService(sesion).obtener(producto_id)
@@ -55,22 +60,22 @@ async def obtener_producto(producto_id: str, sesion: Sesion) -> ProductoResponse
     "",
     response_model=ProductoResponse,
     status_code=201,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("articulos"))],
     operation_id="crear_producto",
 )
 async def crear_producto(datos: CrearProductoRequest, sesion: Sesion) -> ProductoResponse:
-    """Alta de producto. Solo administradores."""
+    """Alta de producto. Requiere módulo Artículos."""
     return await ProductosService(sesion).crear(datos)
 
 
 @router.put(
     "/{producto_id}",
     response_model=ProductoResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("articulos"))],
     operation_id="actualizar_producto",
 )
 async def actualizar_producto(
     producto_id: str, datos: ActualizarProductoRequest, sesion: Sesion
 ) -> ProductoResponse:
-    """Actualiza un producto. Solo administradores."""
+    """Actualiza un producto. Requiere módulo Artículos."""
     return await ProductosService(sesion).actualizar(producto_id, datos)

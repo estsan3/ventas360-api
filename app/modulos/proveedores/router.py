@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
-from app.core.dependencias import obtener_usuario_actual, requerir_rol
 from app.core.excepciones import ReglaDeNegocioViolada
 from app.modulos.proveedores.schemas import (
     ActualizarProveedorRequest,
@@ -17,12 +16,15 @@ from app.modulos.proveedores.schemas import (
     ProveedorResponse,
 )
 from app.modulos.proveedores.service import ProveedoresService
-from app.modulos.tenants.dependencias import fijar_tenant_de_host
+from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
 
 router = APIRouter(
     prefix="/proveedores",
     tags=["Proveedores"],
-    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
+    dependencies=[
+        Depends(exigir_usuario_del_comercio),
+        Depends(requerir_modulo("compras")),
+    ],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
@@ -54,7 +56,6 @@ async def obtener_proveedor(proveedor_id: str, sesion: Sesion) -> ProveedorRespo
     "",
     response_model=ProveedorResponse,
     status_code=201,
-    dependencies=[Depends(requerir_rol("administrador"))],
     operation_id="crear_proveedor",
 )
 async def crear_proveedor(
@@ -66,7 +67,6 @@ async def crear_proveedor(
 @router.put(
     "/{proveedor_id}",
     response_model=ProveedorResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
     operation_id="actualizar_proveedor",
 )
 async def actualizar_proveedor(
@@ -78,7 +78,6 @@ async def actualizar_proveedor(
 @router.patch(
     "/{proveedor_id}/desactivar",
     response_model=ProveedorResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
     operation_id="desactivar_proveedor",
 )
 async def desactivar_proveedor(proveedor_id: str, sesion: Sesion) -> ProveedorResponse:
@@ -88,7 +87,6 @@ async def desactivar_proveedor(proveedor_id: str, sesion: Sesion) -> ProveedorRe
 @router.post(
     "/{proveedor_id}/listas/importar",
     response_model=ImportarListaResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
     operation_id="importar_lista_proveedor",
 )
 async def importar_lista_proveedor(
