@@ -33,6 +33,12 @@ class Configuracion(BaseSettings):
     # Orígenes permitidos para CORS, separados por coma (credentials → nunca *).
     cors_origins: str = "http://localhost:4200,http://localhost:4201"
 
+    # Subdominios locales (`http://agronorte.localhost:4201`). Vacío = no usar regex.
+    cors_origin_regex: str = r"https?://([a-z0-9-]+\.)?localhost:4201"
+
+    # Primera etiqueta de host de la plataforma (admin.localhost, admin.midominio.com).
+    slug_plataforma: str = "admin"
+
     # Sembrar datos de demo al iniciar si la base está vacía (solo dev).
     seed_al_iniciar: bool = True
 

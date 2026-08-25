@@ -14,11 +14,12 @@ from app.modulos.productos.schemas import (
     ProductosPaginaResponse,
 )
 from app.modulos.productos.service import ProductosService
+from app.modulos.tenants.dependencias import fijar_tenant_de_host
 
 router = APIRouter(
     prefix="/productos",
     tags=["Productos"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]

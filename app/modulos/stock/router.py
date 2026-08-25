@@ -16,11 +16,12 @@ from app.modulos.stock.schemas import (
     SaldoResponse,
 )
 from app.modulos.stock.service import StockService
+from app.modulos.tenants.dependencias import fijar_tenant_de_host
 
 router = APIRouter(
     prefix="/stock",
     tags=["Stock"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]

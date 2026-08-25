@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.excepciones import RecursoNoEncontrado
 from app.core.seguridad import crear_token_acceso, hashear_password
+from app.core.tenant_ctx import tenant_id_actual
 from app.modulos.auth.bo import UsuarioBO
 from app.modulos.auth.dao import UsuarioDAO
 from app.modulos.auth.models import Usuario
@@ -60,6 +61,7 @@ class AuthService:
             email=datos.email,
             password_hash=hashear_password(password),
             rol=datos.rol,
+            tenant_id=tenant_id_actual(),
         )
         await self._dao.guardar(usuario)
         await self._sesion.commit()
@@ -88,6 +90,7 @@ class AuthService:
             email=f"vendedor-{sufijo}@pendiente.ventas360",
             password_hash=hashear_password(f"provisoria-{sufijo}"),
             rol="vendedor",
+            tenant_id=tenant_id_actual(),
         )
         await self._dao.guardar(usuario)
         await self._sesion.commit()
@@ -95,7 +98,7 @@ class AuthService:
 
     async def eliminar_usuario(self, usuario_id: str, solicitante_id: str) -> None:
         """Baja de un usuario del backoffice."""
-        usuario = await self._dao.buscar_por_id(usuario_id)
+        usuario = await self._dao.buscar_del_tenant(usuario_id)
         if usuario is None:
             raise RecursoNoEncontrado("Usuario no encontrado")
 

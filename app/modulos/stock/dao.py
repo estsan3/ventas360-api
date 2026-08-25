@@ -3,6 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.tenant_ctx import del_tenant, es_del_tenant
 from app.modulos.stock.models import Deposito, MovimientoStock, SaldoStock
 
 
@@ -11,17 +12,18 @@ class StockDAO:
         self._sesion = sesion
 
     async def listar_depositos(self, solo_activos: bool = True) -> list[Deposito]:
-        consulta = select(Deposito).order_by(Deposito.codigo)
+        consulta = select(Deposito).where(del_tenant(Deposito)).order_by(Deposito.codigo)
         if solo_activos:
             consulta = consulta.where(Deposito.activo.is_(True))
         return list((await self._sesion.execute(consulta)).scalars())
 
     async def buscar_deposito(self, deposito_id: str) -> Deposito | None:
-        return await self._sesion.get(Deposito, deposito_id)
+        deposito = await self._sesion.get(Deposito, deposito_id)
+        return deposito if es_del_tenant(deposito) else None
 
     async def buscar_deposito_por_codigo(self, codigo: str) -> Deposito | None:
         resultado = await self._sesion.execute(
-            select(Deposito).where(Deposito.codigo == codigo)
+            select(Deposito).where(del_tenant(Deposito), Deposito.codigo == codigo)
         )
         return resultado.scalar_one_or_none()
 
@@ -35,6 +37,7 @@ class StockDAO:
     ) -> SaldoStock | None:
         resultado = await self._sesion.execute(
             select(SaldoStock).where(
+                del_tenant(SaldoStock),
                 SaldoStock.articulo_id == articulo_id,
                 SaldoStock.deposito_id == deposito_id,
             )
@@ -43,13 +46,19 @@ class StockDAO:
 
     async def listar_saldos_articulo(self, articulo_id: str) -> list[SaldoStock]:
         resultado = await self._sesion.execute(
-            select(SaldoStock).where(SaldoStock.articulo_id == articulo_id)
+            select(SaldoStock).where(
+                del_tenant(SaldoStock),
+                SaldoStock.articulo_id == articulo_id,
+            )
         )
         return list(resultado.scalars())
 
     async def listar_saldos_deposito(self, deposito_id: str) -> list[SaldoStock]:
         resultado = await self._sesion.execute(
-            select(SaldoStock).where(SaldoStock.deposito_id == deposito_id)
+            select(SaldoStock).where(
+                del_tenant(SaldoStock),
+                SaldoStock.deposito_id == deposito_id,
+            )
         )
         return list(resultado.scalars())
 

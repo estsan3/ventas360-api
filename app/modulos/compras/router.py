@@ -9,11 +9,12 @@ from app.core.database import obtener_sesion
 from app.core.dependencias import obtener_usuario_actual, requerir_rol
 from app.modulos.compras.schemas import CompraResponse, CrearCompraRequest
 from app.modulos.compras.service import ComprasService
+from app.modulos.tenants.dependencias import fijar_tenant_de_host
 
 router = APIRouter(
     prefix="/compras",
     tags=["Compras"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]

@@ -4,6 +4,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.paginacion import calcular_offset
+from app.core.tenant_ctx import del_tenant, es_del_tenant
 from app.modulos.clientes.models import Cliente
 
 
@@ -21,7 +22,7 @@ class ClienteDAO:
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[Cliente], int]:
-        filtros = []
+        filtros = [del_tenant(Cliente)]
         if activo is not None:
             filtros.append(Cliente.activo.is_(activo))
         if q:
@@ -35,11 +36,8 @@ class ClienteDAO:
                 )
             )
 
-        consulta_total = select(func.count()).select_from(Cliente)
-        consulta = select(Cliente).order_by(Cliente.nombre)
-        if filtros:
-            consulta_total = consulta_total.where(*filtros)
-            consulta = consulta.where(*filtros)
+        consulta_total = select(func.count()).select_from(Cliente).where(*filtros)
+        consulta = select(Cliente).where(*filtros).order_by(Cliente.nombre)
 
         total = int((await self._sesion.execute(consulta_total)).scalar_one())
         resultado = await self._sesion.execute(
@@ -48,11 +46,12 @@ class ClienteDAO:
         return list(resultado.scalars()), total
 
     async def buscar_por_id(self, cliente_id: str) -> Cliente | None:
-        return await self._sesion.get(Cliente, cliente_id)
+        cliente = await self._sesion.get(Cliente, cliente_id)
+        return cliente if es_del_tenant(cliente) else None
 
     async def buscar_por_email(self, email: str) -> Cliente | None:
         resultado = await self._sesion.execute(
-            select(Cliente).where(Cliente.email == email)
+            select(Cliente).where(del_tenant(Cliente), Cliente.email == email)
         )
         return resultado.scalar_one_or_none()
 
@@ -63,6 +62,8 @@ class ClienteDAO:
 
     async def contar_activos(self) -> int:
         resultado = await self._sesion.execute(
-            select(func.count()).select_from(Cliente).where(Cliente.activo.is_(True))
+            select(func.count())
+            .select_from(Cliente)
+            .where(del_tenant(Cliente), Cliente.activo.is_(True))
         )
         return int(resultado.scalar_one())

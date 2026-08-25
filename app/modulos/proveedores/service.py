@@ -1,6 +1,6 @@
 """Service del módulo proveedores."""
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,8 +16,8 @@ from app.modulos.proveedores.schemas import (
     CrearProveedorRequest,
     ImportarListaResponse,
     MapeoColumna,
-    ProveedorResponse,
     ProveedoresPaginaResponse,
+    ProveedorResponse,
 )
 
 
@@ -193,7 +193,7 @@ class ProveedoresService:
                 proveedor.politica_precio_venta = pol
             if margen_pct is not None:
                 proveedor.margen_venta_pct = margen
-            proveedor.ultima_importacion_fecha = datetime.now(timezone.utc).replace(tzinfo=None)
+            proveedor.ultima_importacion_fecha = datetime.now(UTC).replace(tzinfo=None)
             proveedor.ultima_importacion_archivo = (nombre_archivo or "lista.xlsx")[:255]
             proveedor.ultima_importacion_actualizados = actualizados
             proveedor.ultima_importacion_nuevos = nuevos

@@ -3,23 +3,27 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Float, String, func
+from sqlalchemy import Boolean, Date, DateTime, Float, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.core.tenant_ctx import ConTenant
 
 
 def _nuevo_id() -> str:
     return str(uuid.uuid4())
 
 
-class CuentaBancaria(Base):
+class CuentaBancaria(ConTenant, Base):
     """Cuenta bancaria de la empresa."""
 
     __tablename__ = "bancos_cuenta"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "codigo", name="uq_bancos_codigo_tenant"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_nuevo_id)
-    codigo: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    codigo: Mapped[str] = mapped_column(String(20), index=True)
     nombre: Mapped[str] = mapped_column(String(120))
     banco: Mapped[str] = mapped_column(String(80), default="")
     cbu: Mapped[str] = mapped_column(String(22), default="")
@@ -27,7 +31,7 @@ class CuentaBancaria(Base):
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
-class MovimientoBancario(Base):
+class MovimientoBancario(ConTenant, Base):
     """Crédito/débito sobre una cuenta."""
 
     __tablename__ = "bancos_movimiento"
@@ -46,7 +50,7 @@ class MovimientoBancario(Base):
     )
 
 
-class ValorBancario(Base):
+class ValorBancario(ConTenant, Base):
     """Cheque / valor en cartera (liviano)."""
 
     __tablename__ = "bancos_valor"

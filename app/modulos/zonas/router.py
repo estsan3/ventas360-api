@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
 from app.core.dependencias import obtener_usuario_actual, requerir_rol
+from app.modulos.tenants.dependencias import fijar_tenant_de_host
 from app.modulos.zonas.schemas import (
     ActualizarZonaRequest,
     CrearZonaRequest,
@@ -18,7 +19,7 @@ from app.modulos.zonas.service import ZonasService
 router = APIRouter(
     prefix="/zonas",
     tags=["Zonas"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]

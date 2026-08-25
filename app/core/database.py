@@ -53,6 +53,7 @@ async def crear_tablas() -> None:
     from app.modulos.productos import models as _productos_models  # noqa: F401
     from app.modulos.proveedores import models as _proveedores_models  # noqa: F401
     from app.modulos.stock import models as _stock_models  # noqa: F401
+    from app.modulos.tenants import models as _tenants_models  # noqa: F401
     from app.modulos.ventas import models as _ventas_models  # noqa: F401
     from app.modulos.zonas import models as _zonas_models  # noqa: F401
 

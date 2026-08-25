@@ -17,16 +17,25 @@ from app.modulos.auth.schemas import (
     UsuarioResponse,
 )
 from app.modulos.auth.service import AuthService
+from app.modulos.tenants.dependencias import fijar_tenant_de_host
 
 router = APIRouter(prefix="/auth", tags=["Autenticaci?n"])
 
 # Router aparte para la gesti?n de usuarios: el front la consume en /usuarios.
-router_usuarios = APIRouter(prefix="/usuarios", tags=["Usuarios"])
+router_usuarios = APIRouter(
+    prefix="/usuarios",
+    tags=["Usuarios"],
+    dependencies=[Depends(fijar_tenant_de_host)],
+)
 
 # Los vendedores son usuarios, pero el front los gestiona desde la pantalla
 # de cat?logos (POST/DELETE /catalogos/vendedores). La ruta vive ac? porque
 # la entidad pertenece a auth; cat?logos nunca toca usuarios.
-router_vendedores = APIRouter(prefix="/catalogos/vendedores", tags=["Usuarios"])
+router_vendedores = APIRouter(
+    prefix="/catalogos/vendedores",
+    tags=["Usuarios"],
+    dependencies=[Depends(fijar_tenant_de_host)],
+)
 
 # Alias para inyectar la sesi?n de base de datos en cada endpoint.
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]

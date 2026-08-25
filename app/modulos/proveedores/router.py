@@ -13,15 +13,16 @@ from app.modulos.proveedores.schemas import (
     ActualizarProveedorRequest,
     CrearProveedorRequest,
     ImportarListaResponse,
-    ProveedorResponse,
     ProveedoresPaginaResponse,
+    ProveedorResponse,
 )
 from app.modulos.proveedores.service import ProveedoresService
+from app.modulos.tenants.dependencias import fijar_tenant_de_host
 
 router = APIRouter(
     prefix="/proveedores",
     tags=["Proveedores"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]

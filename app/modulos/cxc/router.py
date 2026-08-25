@@ -14,11 +14,12 @@ from app.modulos.cxc.schemas import (
     SaldoClienteResponse,
 )
 from app.modulos.cxc.service import CxcService
+from app.modulos.tenants.dependencias import fijar_tenant_de_host
 
 router = APIRouter(
     prefix="/cxc",
     tags=["Cuenta corriente"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]

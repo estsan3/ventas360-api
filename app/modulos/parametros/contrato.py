@@ -5,6 +5,7 @@ from typing import Protocol
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.excepciones import RecursoNoEncontrado
+from app.core.tenant_ctx import tenant_id_actual
 from app.modulos.parametros.bo import ParametrosBO
 from app.modulos.parametros.dao import ParametrosDAO
 from app.modulos.parametros.schemas import ParametrosNegocio
@@ -28,7 +29,7 @@ class ParametrosLocal:
         self._bo = ParametrosBO()
 
     async def obtener_negocio(self) -> ParametrosNegocio:
-        valores = await self._dao.obtener_todos()
+        valores = await self._dao.obtener_todos(tenant_id_actual())
         return ParametrosNegocio(
             iva_porcentaje=float(
                 valores.get("iva_porcentaje", _DEFAULTS.iva_porcentaje)
@@ -37,7 +38,9 @@ class ParametrosLocal:
         )
 
     async def asignar_numero(self, tipo_comprobante: str) -> str:
-        talonario = await self._dao.buscar_talonario_por_tipo(tipo_comprobante)
+        talonario = await self._dao.buscar_talonario_por_tipo(
+            tenant_id_actual(), tipo_comprobante
+        )
         if talonario is None or not talonario.activo:
             raise RecursoNoEncontrado(
                 f"No hay talonario activo para {tipo_comprobante}"

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
 from app.core.dependencias import obtener_usuario_actual
+from app.modulos.tenants.dependencias import fijar_tenant_de_host
 from app.modulos.ventas.schemas import (
     CambiarEstadoPedidoRequest,
     CrearPedidoRequest,
@@ -17,7 +18,7 @@ from app.modulos.ventas.service import VentasService
 router = APIRouter(
     prefix="/ventas",
     tags=["Ventas"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]

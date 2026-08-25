@@ -3,6 +3,7 @@
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.tenant_ctx import del_tenant
 from app.modulos.cxp.models import MovimientoCxp
 
 
@@ -18,7 +19,10 @@ class CxpDAO:
     async def listar_por_proveedor(self, proveedor_id: str) -> list[MovimientoCxp]:
         resultado = await self._sesion.execute(
             select(MovimientoCxp)
-            .where(MovimientoCxp.proveedor_id == proveedor_id)
+            .where(
+                del_tenant(MovimientoCxp),
+                MovimientoCxp.proveedor_id == proveedor_id,
+            )
             .order_by(MovimientoCxp.fecha.desc(), MovimientoCxp.creado_en.desc())
         )
         return list(resultado.scalars())
@@ -30,6 +34,7 @@ class CxpDAO:
             select(func.count())
             .select_from(MovimientoCxp)
             .where(
+                del_tenant(MovimientoCxp),
                 MovimientoCxp.referencia_tipo == referencia_tipo,
                 MovimientoCxp.referencia_id == referencia_id,
             )
@@ -57,7 +62,10 @@ class CxpDAO:
                     ),
                     0.0,
                 ),
-            ).where(MovimientoCxp.proveedor_id == proveedor_id)
+            ).where(
+                del_tenant(MovimientoCxp),
+                MovimientoCxp.proveedor_id == proveedor_id,
+            )
         )
         debe, haber = resultado.one()
         return float(debe), float(haber)
@@ -84,6 +92,8 @@ class CxpDAO:
                     ),
                     0.0,
                 ),
-            ).group_by(MovimientoCxp.proveedor_id)
+            )
+            .where(del_tenant(MovimientoCxp))
+            .group_by(MovimientoCxp.proveedor_id)
         )
         return [(str(r[0]), float(r[1]), float(r[2])) for r in resultado.all()]

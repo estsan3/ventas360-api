@@ -15,10 +15,11 @@ from app.modulos.parametros.schemas import (
     UpsertTalonarioRequest,
 )
 from app.modulos.parametros.service import ParametrosService
+from app.modulos.tenants.dependencias import fijar_tenant_de_host
 
 router = APIRouter(
     tags=["Parámetros"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]

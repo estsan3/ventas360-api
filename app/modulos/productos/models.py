@@ -2,17 +2,18 @@
 
 import uuid
 
-from sqlalchemy import Boolean, Float, Integer, String
+from sqlalchemy import Boolean, Float, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.core.tenant_ctx import ConTenant
 
 
 def _nuevo_id() -> str:
     return str(uuid.uuid4())
 
 
-class Producto(Base):
+class Producto(ConTenant, Base):
     """Artículo del catálogo.
 
     `precio` es el precio de lista vigente (Fase A). El stock plano se
@@ -20,9 +21,12 @@ class Producto(Base):
     """
 
     __tablename__ = "productos_producto"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "sku", name="uq_productos_sku_tenant"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_nuevo_id)
-    sku: Mapped[str] = mapped_column(String(40), unique=True, index=True)
+    sku: Mapped[str] = mapped_column(String(40), index=True)
     nombre: Mapped[str] = mapped_column(String(120), index=True)
     marca: Mapped[str] = mapped_column(String(80), default="")
     rubro: Mapped[str] = mapped_column(String(80), default="")

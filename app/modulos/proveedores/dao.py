@@ -4,6 +4,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.paginacion import calcular_offset
+from app.core.tenant_ctx import del_tenant, es_del_tenant
 from app.modulos.proveedores.models import Proveedor
 
 
@@ -19,7 +20,7 @@ class ProveedorDAO:
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[Proveedor], int]:
-        filtros = []
+        filtros = [del_tenant(Proveedor)]
         if activo is not None:
             filtros.append(Proveedor.activo.is_(activo))
         if q:
@@ -32,11 +33,8 @@ class ProveedorDAO:
                 )
             )
 
-        consulta_total = select(func.count()).select_from(Proveedor)
-        consulta = select(Proveedor).order_by(Proveedor.nombre)
-        if filtros:
-            consulta_total = consulta_total.where(*filtros)
-            consulta = consulta.where(*filtros)
+        consulta_total = select(func.count()).select_from(Proveedor).where(*filtros)
+        consulta = select(Proveedor).where(*filtros).order_by(Proveedor.nombre)
 
         total = int((await self._sesion.execute(consulta_total)).scalar_one())
         resultado = await self._sesion.execute(
@@ -45,7 +43,8 @@ class ProveedorDAO:
         return list(resultado.scalars()), total
 
     async def buscar_por_id(self, proveedor_id: str) -> Proveedor | None:
-        return await self._sesion.get(Proveedor, proveedor_id)
+        proveedor = await self._sesion.get(Proveedor, proveedor_id)
+        return proveedor if es_del_tenant(proveedor) else None
 
     async def guardar(self, proveedor: Proveedor) -> Proveedor:
         self._sesion.add(proveedor)

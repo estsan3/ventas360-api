@@ -16,11 +16,12 @@ from app.modulos.precios.schemas import (
     UpsertPrecioArticuloRequest,
 )
 from app.modulos.precios.service import PreciosService
+from app.modulos.tenants.dependencias import fijar_tenant_de_host
 
 router = APIRouter(
     prefix="/precios",
     tags=["Precios"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]

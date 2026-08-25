@@ -7,13 +7,14 @@ from sqlalchemy import Date, DateTime, Float, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.core.tenant_ctx import ConTenant
 
 
 def _nuevo_id() -> str:
     return str(uuid.uuid4())
 
 
-class MovimientoCxc(Base):
+class MovimientoCxc(ConTenant, Base):
     """Movimiento de cuenta corriente (debe aumenta deuda, haber la reduce)."""
 
     __tablename__ = "cxc_movimiento"

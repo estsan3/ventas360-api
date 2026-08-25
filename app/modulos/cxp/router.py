@@ -9,11 +9,12 @@ from app.core.database import obtener_sesion
 from app.core.dependencias import obtener_usuario_actual
 from app.modulos.cxp.schemas import EstadoCuentaProveedorResponse, SaldoProveedorResponse
 from app.modulos.cxp.service import CxpService
+from app.modulos.tenants.dependencias import fijar_tenant_de_host
 
 router = APIRouter(
     prefix="/cxp",
     tags=["Cuenta corriente proveedores"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(obtener_usuario_actual), Depends(fijar_tenant_de_host)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
