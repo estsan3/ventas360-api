@@ -43,6 +43,8 @@ class ContratoProductos(Protocol):
 
     async def listar_activos(self) -> list[ProductoResumen]: ...
 
+    async def establecer_stock(self, producto_id: str, stock: int) -> None: ...
+
     async def upsert_desde_lista(
         self,
         *,
@@ -90,6 +92,14 @@ class ProductosLocal:
 
     async def listar_activos(self) -> list[ProductoResumen]:
         return [self._a_resumen(p) for p in await self._dao.listar_activos()]
+
+    async def establecer_stock(self, producto_id: str, stock: int) -> None:
+        self._bo.validar_stock(stock)
+        producto = await self._dao.buscar_por_id(producto_id)
+        if producto is None:
+            return
+        producto.stock = stock
+        await self._dao.guardar(producto)
 
     async def upsert_desde_lista(
         self,

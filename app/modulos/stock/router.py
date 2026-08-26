@@ -9,6 +9,8 @@ from app.core.database import obtener_sesion
 from app.modulos.stock.schemas import (
     ActualizarDepositoRequest,
     AjusteStockRequest,
+    CerrarTomaRequest,
+    CerrarTomaResponse,
     CrearDepositoRequest,
     DepositoResponse,
     InventarioItemResponse,
@@ -103,3 +105,16 @@ async def listar_inventario_deposito(
 )
 async def ajustar_stock(datos: AjusteStockRequest, sesion: Sesion) -> SaldoResponse:
     return await StockService(sesion).ajustar(datos)
+
+
+@router.post(
+    "/tomas",
+    response_model=CerrarTomaResponse,
+    dependencies=[Depends(requerir_modulo("stock"))],
+    operation_id="cerrar_toma_inventario",
+)
+async def cerrar_toma_inventario(
+    datos: CerrarTomaRequest, sesion: Sesion
+) -> CerrarTomaResponse:
+    """Cierra la toma: deja el saldo del depósito en las cantidades contadas."""
+    return await StockService(sesion).cerrar_toma(datos)

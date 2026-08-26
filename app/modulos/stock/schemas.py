@@ -51,6 +51,31 @@ class AjusteStockRequest(BaseModel):
     referencia: str = Field(default="", max_length=80)
 
 
+class ConteoTomaItemRequest(BaseModel):
+    articulo_id: str = Field(min_length=1, max_length=36)
+    cantidad: int = Field(ge=0)
+
+
+class CerrarTomaRequest(BaseModel):
+    deposito_id: str = Field(min_length=1, max_length=36)
+    conteos: list[ConteoTomaItemRequest] = Field(min_length=1, max_length=2000)
+
+
+class AjusteTomaItemResponse(BaseModel):
+    articulo_id: str
+    sku: str
+    anterior: int
+    nuevo: int
+    delta: int
+
+
+class CerrarTomaResponse(BaseModel):
+    deposito_id: str
+    ajustados: int
+    sin_cambio: int
+    ajustes: list[AjusteTomaItemResponse]
+
+
 class MovimientoResponse(BaseModel):
     id: str
     articulo_id: str

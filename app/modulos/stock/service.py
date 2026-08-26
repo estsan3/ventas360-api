@@ -11,6 +11,9 @@ from app.modulos.stock.models import Deposito, MovimientoStock, SaldoStock
 from app.modulos.stock.schemas import (
     ActualizarDepositoRequest,
     AjusteStockRequest,
+    AjusteTomaItemResponse,
+    CerrarTomaRequest,
+    CerrarTomaResponse,
     CrearDepositoRequest,
     DepositoResponse,
     InventarioItemResponse,
@@ -155,3 +158,49 @@ class StockService:
         )
         await self._sesion.commit()
         return SaldoResponse.model_validate(saldo)
+
+    async def cerrar_toma(self, datos: CerrarTomaRequest) -> CerrarTomaResponse:
+        deposito = await self._dao.buscar_deposito(datos.deposito_id)
+        if deposito is None or not deposito.activo:
+            raise RecursoNoEncontrado("Depósito no encontrado")
+
+        vistos: set[str] = set()
+        ajustes: list[AjusteTomaItemResponse] = []
+        sin_cambio = 0
+        for item in datos.conteos:
+            if item.articulo_id in vistos:
+                raise ReglaDeNegocioViolada("Hay artículos duplicados en el conteo")
+            vistos.add(item.articulo_id)
+            articulo = await self._productos.obtener_producto(item.articulo_id)
+            if articulo is None:
+                raise RecursoNoEncontrado("Artículo no encontrado")
+            anterior = await self._stock.obtener_saldo(item.articulo_id, datos.deposito_id)
+            nuevo = await self._stock.establecer_cantidad(
+                item.articulo_id,
+                datos.deposito_id,
+                item.cantidad,
+                referencia="toma_inventario",
+            )
+            total = await self._stock.saldo_total_articulo(item.articulo_id)
+            await self._productos.establecer_stock(item.articulo_id, total)
+            delta = nuevo - anterior
+            if delta == 0:
+                sin_cambio += 1
+                continue
+            ajustes.append(
+                AjusteTomaItemResponse(
+                    articulo_id=item.articulo_id,
+                    sku=articulo.sku,
+                    anterior=anterior,
+                    nuevo=nuevo,
+                    delta=delta,
+                )
+            )
+
+        await self._sesion.commit()
+        return CerrarTomaResponse(
+            deposito_id=datos.deposito_id,
+            ajustados=len(ajustes),
+            sin_cambio=sin_cambio,
+            ajustes=ajustes,
+        )
