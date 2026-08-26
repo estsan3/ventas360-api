@@ -29,6 +29,12 @@ class ContratoProductos(Protocol):
 
     async def contar_activos(self) -> int: ...
 
+    async def contar_bajo_stock(self, umbral: int = 5) -> tuple[int, int]: ...
+
+    async def listar_bajo_stock(
+        self, *, umbral: int = 5, limite: int = 8
+    ) -> list[ProductoResumen]: ...
+
     async def stock_total(self) -> int: ...
 
     async def obtener_producto(self, producto_id: str) -> ProductoResumen | None: ...
@@ -59,6 +65,17 @@ class ProductosLocal:
 
     async def contar_activos(self) -> int:
         return await self._dao.contar_activos()
+
+    async def contar_bajo_stock(self, umbral: int = 5) -> tuple[int, int]:
+        return await self._dao.contar_bajo_stock(umbral)
+
+    async def listar_bajo_stock(
+        self, *, umbral: int = 5, limite: int = 8
+    ) -> list[ProductoResumen]:
+        return [
+            self._a_resumen(p)
+            for p in await self._dao.listar_bajo_stock(umbral=umbral, limite=limite)
+        ]
 
     async def stock_total(self) -> int:
         return await self._dao.stock_total()

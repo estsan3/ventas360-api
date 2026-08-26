@@ -1,6 +1,7 @@
 """Contrato público del módulo ventas."""
 
 from dataclasses import dataclass
+from datetime import date, timedelta
 from typing import Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,6 +40,24 @@ class ArticuloTop:
 
 
 @dataclass(frozen=True)
+class ComprobanteResumenDash:
+    id: str
+    tipo: str
+    numero: str | None
+    cliente_id: str
+    estado: str
+    total: float
+    fecha: date
+
+
+@dataclass(frozen=True)
+class PuntoSerie:
+    fecha: date
+    cantidad: int
+    monto: float
+
+
+@dataclass(frozen=True)
 class PendientesVentas:
     pedidos_borrador: int
     remitos_borrador: int
@@ -56,6 +75,10 @@ class ContratoVentas(Protocol):
 
     async def top_articulos(self, limite: int = 5) -> list[ArticuloTop]: ...
 
+    async def listar_recientes(self, limite: int = 8) -> list[ComprobanteResumenDash]: ...
+
+    async def serie_semana(self) -> list[PuntoSerie]: ...
+
     async def obtener_factura(self, factura_id: str) -> FacturaResumen | None: ...
 
     async def obtener_comprobante_cobrable(
@@ -70,17 +93,39 @@ class VentasLocal:
         self._dao = VentasDAO(sesion)
 
     async def metricas_mes(self) -> MetricasPeriodo:
-        from datetime import date
-
         hoy = date.today()
         cantidad, monto = await self._dao.metricas_mes(hoy.year, hoy.month)
         return MetricasPeriodo(cantidad=cantidad, monto=monto)
 
     async def metricas_dia(self) -> MetricasPeriodo:
-        from datetime import date
-
         cantidad, monto = await self._dao.metricas_dia(date.today())
         return MetricasPeriodo(cantidad=cantidad, monto=monto)
+
+    async def listar_recientes(self, limite: int = 8) -> list[ComprobanteResumenDash]:
+        return [
+            ComprobanteResumenDash(
+                id=p.id,
+                tipo=p.tipo,
+                numero=p.numero,
+                cliente_id=p.cliente_id,
+                estado=p.estado,
+                total=p.total,
+                fecha=p.fecha,
+            )
+            for p in await self._dao.listar_recientes(limite)
+        ]
+
+    async def serie_semana(self) -> list[PuntoSerie]:
+        hoy = date.today()
+        inicio = hoy - timedelta(days=6)
+        por_dia = await self._dao.serie_diaria(inicio, hoy + timedelta(days=1))
+        puntos: list[PuntoSerie] = []
+        actual = inicio
+        while actual <= hoy:
+            cantidad, monto = por_dia.get(actual, (0, 0.0))
+            puntos.append(PuntoSerie(fecha=actual, cantidad=cantidad, monto=monto))
+            actual += timedelta(days=1)
+        return puntos
 
     async def pendientes(self) -> PendientesVentas:
         return PendientesVentas(

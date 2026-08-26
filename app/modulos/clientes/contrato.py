@@ -12,6 +12,8 @@ class ContratoClientes(Protocol):
 
     async def contar_activos(self) -> int: ...
 
+    async def nombres_por_ids(self, ids: list[str]) -> dict[str, str]: ...
+
     async def existe_cliente(self, cliente_id: str) -> bool: ...
 
 
@@ -23,6 +25,9 @@ class ClientesLocal:
 
     async def contar_activos(self) -> int:
         return await self._dao.contar_activos()
+
+    async def nombres_por_ids(self, ids: list[str]) -> dict[str, str]:
+        return await self._dao.nombres_por_ids(ids)
 
     async def existe_cliente(self, cliente_id: str) -> bool:
         cliente = await self._dao.buscar_por_id(cliente_id)

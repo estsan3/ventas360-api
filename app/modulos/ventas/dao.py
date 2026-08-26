@@ -16,6 +16,37 @@ class VentasDAO:
     def __init__(self, sesion: AsyncSession) -> None:
         self._sesion = sesion
 
+    async def listar_recientes(self, limite: int = 8) -> list[Pedido]:
+        resultado = await self._sesion.execute(
+            select(Pedido)
+            .where(del_tenant(Pedido))
+            .where(Pedido.tipo.in_(("pedido", "remito", "factura")))
+            .order_by(Pedido.fecha.desc(), Pedido.id.desc())
+            .limit(limite)
+        )
+        return list(resultado.scalars())
+
+    async def serie_diaria(
+        self, inicio: date, fin_exclusivo: date
+    ) -> dict[date, tuple[int, float]]:
+        consulta = (
+            select(
+                Pedido.fecha,
+                func.count(Pedido.id),
+                func.coalesce(func.sum(Pedido.total), 0.0),
+            )
+            .where(del_tenant(Pedido))
+            .where(Pedido.fecha >= inicio)
+            .where(Pedido.fecha < fin_exclusivo)
+            .where(
+                Pedido.estado.in_(("confirmado", "entregado", "facturado")),
+                Pedido.tipo.in_(("pedido", "remito", "factura")),
+            )
+            .group_by(Pedido.fecha)
+        )
+        filas = (await self._sesion.execute(consulta)).all()
+        return {fila[0]: (int(fila[1]), float(fila[2])) for fila in filas}
+
     async def listar(
         self, tipo: str | None = None, cliente_id: str | None = None
     ) -> list[Pedido]:

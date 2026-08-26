@@ -63,3 +63,8 @@ async def test_kpis_incluye_campos_fase_a(cliente, auth_headers) -> None:
     assert "remitos_pendientes" in body
     assert "top_articulos" in body
     assert isinstance(body["top_articulos"], list)
+    assert "saldo_cobrar" in body
+    assert "serie_semana" in body
+    assert "ultimos_comprobantes" in body
+    assert "reposicion" in body
+    assert "vencimientos" in body

@@ -62,6 +62,29 @@ async def test_superadmin_crea_comercio_con_primer_admin(
     assert login.status_code == 200
     assert login.json()["usuario"]["rol"] == "administrador"
 
+    token = login.json()["access_token"]
+    kpis = await cliente.get(
+        "/api/v1/reporteria/kpis",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Origin": "http://kiosco-milka.localhost:4201",
+        },
+    )
+    assert kpis.status_code == 200, kpis.text
+    cuerpo_kpis = kpis.json()
+    assert cuerpo_kpis["clientes_activos"] == 0
+    assert cuerpo_kpis["productos_activos"] == 0
+    assert cuerpo_kpis["ventas_dia"] == 0
+    assert cuerpo_kpis["monto_ventas_dia"] == 0
+    assert cuerpo_kpis["pedidos_pendientes"] == 0
+    assert cuerpo_kpis["saldo_cobrar"] == 0
+    assert cuerpo_kpis["articulos_bajo_stock"] == 0
+    assert cuerpo_kpis["ultimos_comprobantes"] == []
+    assert cuerpo_kpis["reposicion"] == []
+    assert cuerpo_kpis["vencimientos"] == []
+    assert len(cuerpo_kpis["serie_semana"]) == 7
+    assert all(p["monto"] == 0 for p in cuerpo_kpis["serie_semana"])
+
 
 @pytest.mark.asyncio
 async def test_listar_tenants_incluye_demo_y_alta(

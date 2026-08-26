@@ -67,3 +67,13 @@ class ClienteDAO:
             .where(del_tenant(Cliente), Cliente.activo.is_(True))
         )
         return int(resultado.scalar_one())
+
+    async def nombres_por_ids(self, ids: list[str]) -> dict[str, str]:
+        if not ids:
+            return {}
+        resultado = await self._sesion.execute(
+            select(Cliente.id, Cliente.nombre).where(
+                del_tenant(Cliente), Cliente.id.in_(ids)
+            )
+        )
+        return {str(r[0]): str(r[1]) for r in resultado.all()}

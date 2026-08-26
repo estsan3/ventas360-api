@@ -77,6 +77,44 @@ class ProductoDAO:
         )
         return int(resultado.scalar_one())
 
+    async def contar_bajo_stock(self, umbral: int = 5) -> tuple[int, int]:
+        """(artículos con stock < umbral, artículos en 0). Solo activos."""
+        filtros = [del_tenant(Producto), Producto.activo.is_(True)]
+        bajo = int(
+            (
+                await self._sesion.execute(
+                    select(func.count())
+                    .select_from(Producto)
+                    .where(*filtros, Producto.stock < umbral)
+                )
+            ).scalar_one()
+        )
+        sin_stock = int(
+            (
+                await self._sesion.execute(
+                    select(func.count())
+                    .select_from(Producto)
+                    .where(*filtros, Producto.stock <= 0)
+                )
+            ).scalar_one()
+        )
+        return bajo, sin_stock
+
+    async def listar_bajo_stock(
+        self, *, umbral: int = 5, limite: int = 8
+    ) -> list[Producto]:
+        resultado = await self._sesion.execute(
+            select(Producto)
+            .where(
+                del_tenant(Producto),
+                Producto.activo.is_(True),
+                Producto.stock < umbral,
+            )
+            .order_by(Producto.stock.asc(), Producto.nombre.asc())
+            .limit(limite)
+        )
+        return list(resultado.scalars())
+
     async def stock_total(self) -> int:
         resultado = await self._sesion.execute(
             select(func.coalesce(func.sum(Producto.stock), 0)).where(
