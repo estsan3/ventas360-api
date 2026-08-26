@@ -75,9 +75,13 @@ async def test_listar_tenants_incluye_demo_y_alta(
 
     lista = await cliente.get("/api/v1/tenants", headers=plataforma_headers)
     assert lista.status_code == 200
-    slugs = {t["slug"] for t in lista.json()}
-    assert SLUG_TENANT_DEMO in slugs
-    assert payload["slug"] in slugs
+    por_slug = {t["slug"]: t for t in lista.json()}
+    assert SLUG_TENANT_DEMO in por_slug
+    assert payload["slug"] in por_slug
+    alta_lista = por_slug[payload["slug"]]
+    assert alta_lista["admin_nombre"] == payload["administrador"]["nombre"]
+    assert alta_lista["admin_email"] == payload["administrador"]["email"]
+    assert alta_lista["admin_dni"] == payload["administrador"]["dni"]
 
 
 @pytest.mark.asyncio
@@ -103,6 +107,73 @@ async def test_obtener_y_actualizar_nombre(cliente, plataforma_headers) -> None:
     assert patch.status_code == 200
     assert patch.json()["nombre"] == "Kiosco Milka Centro"
     assert patch.json()["slug"] == slug
+
+
+@pytest.mark.asyncio
+async def test_detalle_incluye_usuarios_y_reset_password(
+    cliente, plataforma_headers
+) -> None:
+    payload = _alta()
+    creado = await cliente.post(
+        "/api/v1/tenants", headers=plataforma_headers, json=payload
+    )
+    assert creado.status_code == 201, creado.text
+    tenant_id = creado.json()["id"]
+    admin_id = creado.json()["administrador"]["id"]
+    slug = payload["slug"]
+    email = payload["administrador"]["email"]
+
+    detalle = await cliente.get(
+        f"/api/v1/tenants/{tenant_id}", headers=plataforma_headers
+    )
+    assert detalle.status_code == 200
+    cuerpo = detalle.json()
+    assert cuerpo["admin_email"] == email
+    assert cuerpo["admin_dni"] == payload["administrador"]["dni"]
+    assert cuerpo["admin_nombre"] == payload["administrador"]["nombre"]
+    assert any(u["email"] == email and u["rol"] == "administrador" for u in cuerpo["usuarios"])
+
+    nueva = "nuevaClave99"
+    reset = await cliente.patch(
+        f"/api/v1/tenants/{tenant_id}/usuarios/{admin_id}/password",
+        headers=plataforma_headers,
+        json={"password": nueva},
+    )
+    assert reset.status_code == 200, reset.text
+
+    vieja = await cliente.post(
+        "/api/v1/auth/login",
+        headers={"Origin": f"http://{slug}.localhost:4201"},
+        json={"email": email, "password": "demo12345"},
+    )
+    assert vieja.status_code == 401
+
+    login = await cliente.post(
+        "/api/v1/auth/login",
+        headers={"Origin": f"http://{slug}.localhost:4201"},
+        json={"email": email, "password": nueva},
+    )
+    assert login.status_code == 200
+    assert login.json()["usuario"]["email"] == email
+
+
+@pytest.mark.asyncio
+async def test_reset_password_usuario_ajeno_es_404(
+    cliente, plataforma_headers
+) -> None:
+    a = await cliente.post(
+        "/api/v1/tenants", headers=plataforma_headers, json=_alta()
+    )
+    b = await cliente.post(
+        "/api/v1/tenants", headers=plataforma_headers, json=_alta()
+    )
+    assert a.status_code == 201 and b.status_code == 201
+    reset = await cliente.patch(
+        f"/api/v1/tenants/{a.json()['id']}/usuarios/{b.json()['administrador']['id']}/password",
+        headers=plataforma_headers,
+        json={"password": "otraClave99"},
+    )
+    assert reset.status_code == 404
 
 
 @pytest.mark.asyncio

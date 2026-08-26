@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import obtener_configuracion
 from app.core.excepciones import RecursoNoEncontrado, ReglaDeNegocioViolada
 from app.core.tenant_ctx import tenant_id_actual, usando_tenant
-from app.modulos.auth.contrato import AuthLocal, ContratoAuth
+from app.modulos.auth.contrato import AuthLocal, ContratoAuth, UsuarioDeTenant
 from app.modulos.tenants.bo import (
     MODULOS_MATRIZ,
     ROLES_EDITABLES,
@@ -19,13 +19,16 @@ from app.modulos.tenants.schemas import (
     ActualizarPermisosRequest,
     ActualizarTenantRequest,
     AdministradorCreadoResponse,
+    CambiarPasswordUsuarioRequest,
     CeldaPermisoResponse,
     ContextoHostResponse,
     CrearTenantRequest,
     MatrizPermisosResponse,
     TenantCreadoResponse,
+    TenantDetalleResponse,
     TenantPublico,
     TenantResponse,
+    TenantUsuarioResponse,
 )
 
 
@@ -60,11 +63,26 @@ class TenantsService:
 
     async def listar(self) -> list[TenantResponse]:
         tenants = await self._dao.listar()
-        return [TenantResponse.model_validate(t) for t in tenants]
+        admins = await self._auth.primeros_administradores([t.id for t in tenants])
+        return [self._a_respuesta(t, admins.get(t.id)) for t in tenants]
 
-    async def obtener(self, tenant_id: str) -> TenantResponse:
+    async def obtener(self, tenant_id: str) -> TenantDetalleResponse:
         tenant = await self._buscar_o_fallar(tenant_id)
-        return TenantResponse.model_validate(tenant)
+        usuarios = await self._auth.listar_usuarios_de_tenant(tenant_id)
+        admin = next((u for u in usuarios if u.rol == "administrador"), None)
+        return TenantDetalleResponse(
+            **self._a_respuesta(tenant, admin).model_dump(),
+            usuarios=[
+                TenantUsuarioResponse(
+                    id=u.id,
+                    nombre=u.nombre,
+                    email=u.email,
+                    dni=u.dni,
+                    rol=u.rol,
+                )
+                for u in usuarios
+            ],
+        )
 
     async def obtener_por_slug(self, slug: str) -> TenantResponse:
         normalizado = self._bo.normalizar_slug(slug)
@@ -101,6 +119,9 @@ class TenantsService:
             slug=tenant.slug,
             nombre=tenant.nombre,
             activo=tenant.activo,
+            admin_nombre=creado.nombre,
+            admin_email=creado.email,
+            admin_dni=creado.dni,
             administrador=AdministradorCreadoResponse(
                 id=creado.id,
                 nombre=creado.nombre,
@@ -120,7 +141,8 @@ class TenantsService:
             tenant.activo = datos.activo
         await self._dao.guardar(tenant)
         await self._sesion.commit()
-        return TenantResponse.model_validate(tenant)
+        admins = await self._auth.primeros_administradores([tenant.id])
+        return self._a_respuesta(tenant, admins.get(tenant.id))
 
     async def asegurar_permisos_default(self, tenant_id: str) -> None:
         """Escribe la matriz default si el comercio aún no tiene filas. Sin commit."""
@@ -189,6 +211,38 @@ class TenantsService:
                 await self._dao.guardar_permiso(existente)
         await self._sesion.commit()
         return await self.obtener_matriz()
+
+    async def cambiar_password_usuario(
+        self, tenant_id: str, usuario_id: str, datos: CambiarPasswordUsuarioRequest
+    ) -> TenantUsuarioResponse:
+        await self._buscar_o_fallar(tenant_id)
+        usuario = await self._auth.cambiar_password_de_tenant(
+            tenant_id, usuario_id, datos.password
+        )
+        await self._sesion.commit()
+        return TenantUsuarioResponse(
+            id=usuario.id,
+            nombre=usuario.nombre,
+            email=usuario.email,
+            dni=usuario.dni,
+            rol=usuario.rol,
+        )
+
+    def _a_respuesta(
+        self, tenant: Tenant, admin: UsuarioDeTenant | None
+    ) -> TenantResponse:
+        admin_nombre = admin.nombre if admin is not None else None
+        admin_email = admin.email if admin is not None else None
+        admin_dni = admin.dni if admin is not None else None
+        return TenantResponse(
+            id=tenant.id,
+            slug=tenant.slug,
+            nombre=tenant.nombre,
+            activo=tenant.activo,
+            admin_nombre=admin_nombre,
+            admin_email=admin_email,
+            admin_dni=admin_dni,
+        )
 
     async def _buscar_o_fallar(self, tenant_id: str) -> Tenant:
         tenant = await self._dao.buscar_por_id(tenant_id)

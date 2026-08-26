@@ -27,7 +27,13 @@ Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
 @router.get(
     "",
     response_model=ZonasPaginaResponse,
-    dependencies=[Depends(requerir_modulo("clientes", "configuracion"))],
+    dependencies=[
+        Depends(
+            requerir_modulo(
+                "clientes", "configuracion", "mostrador", "cta_cte", "ventas"
+            )
+        )
+    ],
     operation_id="listar_zonas",
 )
 async def listar_zonas(
@@ -45,7 +51,13 @@ async def listar_zonas(
 @router.get(
     "/{zona_id}",
     response_model=ZonaResponse,
-    dependencies=[Depends(requerir_modulo("clientes", "configuracion"))],
+    dependencies=[
+        Depends(
+            requerir_modulo(
+                "clientes", "configuracion", "mostrador", "cta_cte", "ventas"
+            )
+        )
+    ],
     operation_id="obtener_zona",
 )
 async def obtener_zona(zona_id: str, sesion: Sesion) -> ZonaResponse:

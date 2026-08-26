@@ -67,6 +67,11 @@ async def test_vendedor_catalogo_si_abm_no(cliente, auth_headers) -> None:
     assert (await cliente.get("/api/v1/productos", headers=headers)).status_code == 200
     assert (await cliente.get("/api/v1/clientes", headers=headers)).status_code == 200
     assert (await cliente.get("/api/v1/reporteria/kpis", headers=headers)).status_code == 200
+    assert (await cliente.get("/api/v1/zonas", headers=headers)).status_code == 200
+    assert (
+        await cliente.get("/api/v1/catalogos/vendedores", headers=headers)
+    ).status_code == 200
+    assert (await cliente.get("/api/v1/usuarios", headers=headers)).status_code == 403
 
     crear_prod = await cliente.post(
         "/api/v1/productos",
@@ -81,6 +86,13 @@ async def test_vendedor_catalogo_si_abm_no(cliente, auth_headers) -> None:
         json={"nombre": "No", "email": "no@demo.com", "telefono": "1"},
     )
     assert crear_cli.status_code == 403
+
+    crear_zona = await cliente.post(
+        "/api/v1/zonas",
+        headers=headers,
+        json={"nombre": "No", "codigo": "NO"},
+    )
+    assert crear_zona.status_code == 403
 
     compras = await cliente.post(
         "/api/v1/compras",

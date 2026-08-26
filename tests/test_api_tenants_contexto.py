@@ -55,6 +55,32 @@ async def test_contexto_comercio_desconocido(cliente) -> None:
 
 
 @pytest.mark.asyncio
+async def test_contexto_comercio_por_referer(cliente) -> None:
+    async with fabrica_sesiones() as sesion:
+        sesion.add(
+            Tenant(
+                id="tnt-referer",
+                slug="referer-demo",
+                nombre="Kiosco Referer",
+            )
+        )
+        await sesion.commit()
+
+    respuesta = await cliente.get(
+        "/api/v1/tenants/contexto",
+        headers={
+            "Origin": "",
+            "Referer": "http://referer-demo.localhost:4201/login",
+        },
+    )
+    assert respuesta.status_code == 200
+    cuerpo = respuesta.json()
+    assert cuerpo["tipo"] == "comercio"
+    assert cuerpo["slug"] == "referer-demo"
+    assert cuerpo["tenant"]["nombre"] == "Kiosco Referer"
+
+
+@pytest.mark.asyncio
 async def test_contexto_localhost_sin_slug(cliente) -> None:
     respuesta = await cliente.get(
         "/api/v1/tenants/contexto",

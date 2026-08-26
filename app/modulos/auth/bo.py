@@ -23,6 +23,10 @@ class UsuarioBO:
         if rol not in ROLES_VALIDOS:
             raise ReglaDeNegocioViolada(f"Rol inválido: {rol}")
 
+    def validar_password(self, password: str) -> None:
+        if len(password.strip()) < 8:
+            raise ReglaDeNegocioViolada("La contraseña debe tener al menos 8 caracteres")
+
     def validar_baja(
         self, es_el_mismo_usuario: bool, es_ultimo_administrador: bool
     ) -> None:

@@ -138,7 +138,13 @@ async def eliminar_usuario(
 @router_vendedores.get(
     "",
     response_model=list[UsuarioResponse],
-    dependencies=[Depends(requerir_modulo("configuracion", "clientes", "mostrador"))],
+    dependencies=[
+        Depends(
+            requerir_modulo(
+                "configuracion", "clientes", "mostrador", "cta_cte", "ventas"
+            )
+        )
+    ],
     operation_id="listar_vendedores",
 )
 async def listar_vendedores(sesion: Sesion) -> list[UsuarioResponse]:

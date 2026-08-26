@@ -10,6 +10,7 @@ from typing import Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.excepciones import RecursoNoEncontrado
 from app.core.seguridad import hashear_password
 from app.modulos.auth.bo import UsuarioBO
 from app.modulos.auth.dao import UsuarioDAO
@@ -34,6 +35,18 @@ class AdministradorInicial:
     id: str
     nombre: str
     email: str
+    dni: str
+    rol: str
+
+
+@dataclass(frozen=True)
+class UsuarioDeTenant:
+    """Usuario de un comercio, para la ficha de plataforma."""
+
+    id: str
+    nombre: str
+    email: str
+    dni: str
     rol: str
 
 
@@ -58,6 +71,22 @@ class ContratoAuth(Protocol):
         password: str | None,
     ) -> AdministradorInicial:
         """Alta del primer admin del comercio. Sin commit."""
+        ...
+
+    async def listar_usuarios_de_tenant(self, tenant_id: str) -> list[UsuarioDeTenant]:
+        """Todos los usuarios del comercio (sin contraseña)."""
+        ...
+
+    async def primeros_administradores(
+        self, tenant_ids: list[str]
+    ) -> dict[str, UsuarioDeTenant]:
+        """Primer administrador de cada comercio (para el listado)."""
+        ...
+
+    async def cambiar_password_de_tenant(
+        self, tenant_id: str, usuario_id: str, password: str
+    ) -> UsuarioDeTenant:
+        """Nueva clave de un usuario de ese comercio. Sin commit."""
         ...
 
 
@@ -102,5 +131,41 @@ class AuthLocal:
             id=usuario.id,
             nombre=usuario.nombre,
             email=usuario.email,
+            dni=usuario.dni,
             rol=usuario.rol,
         )
+
+    async def listar_usuarios_de_tenant(self, tenant_id: str) -> list[UsuarioDeTenant]:
+        usuarios = await self._dao.listar_por_tenant_id(tenant_id)
+        return [_usuario_de_tenant(u) for u in usuarios]
+
+    async def primeros_administradores(
+        self, tenant_ids: list[str]
+    ) -> dict[str, UsuarioDeTenant]:
+        por_tenant: dict[str, UsuarioDeTenant] = {}
+        for usuario in await self._dao.listar_administradores_de_tenants(tenant_ids):
+            tenant_id = usuario.tenant_id
+            if tenant_id and tenant_id not in por_tenant:
+                por_tenant[tenant_id] = _usuario_de_tenant(usuario)
+        return por_tenant
+
+    async def cambiar_password_de_tenant(
+        self, tenant_id: str, usuario_id: str, password: str
+    ) -> UsuarioDeTenant:
+        self._bo.validar_password(password)
+        usuario = await self._dao.buscar_por_id(usuario_id)
+        if usuario is None or usuario.tenant_id != tenant_id:
+            raise RecursoNoEncontrado("Usuario no encontrado en este comercio")
+        usuario.password_hash = hashear_password(password.strip())
+        await self._dao.guardar(usuario)
+        return _usuario_de_tenant(usuario)
+
+
+def _usuario_de_tenant(usuario: Usuario) -> UsuarioDeTenant:
+    return UsuarioDeTenant(
+        id=usuario.id,
+        nombre=usuario.nombre,
+        email=usuario.email,
+        dni=usuario.dni,
+        rol=usuario.rol,
+    )

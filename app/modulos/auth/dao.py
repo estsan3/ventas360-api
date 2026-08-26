@@ -43,6 +43,30 @@ class UsuarioDAO:
         )
         return list(resultado.scalars())
 
+    async def listar_por_tenant_id(self, tenant_id: str) -> list[Usuario]:
+        """Usuarios de un comercio (plataforma; no usa el tenant del request)."""
+        resultado = await self._sesion.execute(
+            select(Usuario)
+            .where(Usuario.tenant_id == tenant_id)
+            .order_by(Usuario.rol, Usuario.nombre)
+        )
+        return list(resultado.scalars())
+
+    async def listar_administradores_de_tenants(
+        self, tenant_ids: list[str]
+    ) -> list[Usuario]:
+        if not tenant_ids:
+            return []
+        resultado = await self._sesion.execute(
+            select(Usuario)
+            .where(
+                Usuario.tenant_id.in_(tenant_ids),
+                Usuario.rol == "administrador",
+            )
+            .order_by(Usuario.nombre)
+        )
+        return list(resultado.scalars())
+
     async def eliminar(self, usuario: Usuario) -> None:
         """Elimina el usuario de la sesión. El commit lo hace la capa service."""
         await self._sesion.delete(usuario)

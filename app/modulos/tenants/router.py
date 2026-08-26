@@ -16,11 +16,14 @@ from app.modulos.tenants.host import hostname_desde_request
 from app.modulos.tenants.schemas import (
     ActualizarPermisosRequest,
     ActualizarTenantRequest,
+    CambiarPasswordUsuarioRequest,
     ContextoHostResponse,
     CrearTenantRequest,
     MatrizPermisosResponse,
     TenantCreadoResponse,
+    TenantDetalleResponse,
     TenantResponse,
+    TenantUsuarioResponse,
 )
 from app.modulos.tenants.service import TenantsService
 
@@ -83,10 +86,11 @@ async def crear_tenant(
 
 @router_plataforma.get(
     "/{tenant_id}",
-    response_model=TenantResponse,
+    response_model=TenantDetalleResponse,
     operation_id="obtener_tenant",
 )
-async def obtener_tenant(tenant_id: str, sesion: Sesion) -> TenantResponse:
+async def obtener_tenant(tenant_id: str, sesion: Sesion) -> TenantDetalleResponse:
+    """Ficha del comercio: slug de solo lectura y usuarios (para reset de clave)."""
     return await TenantsService(sesion).obtener(tenant_id)
 
 
@@ -100,6 +104,23 @@ async def actualizar_tenant(
 ) -> TenantResponse:
     """Edita nombre comercial o activo. El slug es de solo lectura."""
     return await TenantsService(sesion).actualizar(tenant_id, datos)
+
+
+@router_plataforma.patch(
+    "/{tenant_id}/usuarios/{usuario_id}/password",
+    response_model=TenantUsuarioResponse,
+    operation_id="cambiar_password_usuario_tenant",
+)
+async def cambiar_password_usuario_tenant(
+    tenant_id: str,
+    usuario_id: str,
+    datos: CambiarPasswordUsuarioRequest,
+    sesion: Sesion,
+) -> TenantUsuarioResponse:
+    """La plataforma asigna una clave nueva al usuario del comercio."""
+    return await TenantsService(sesion).cambiar_password_usuario(
+        tenant_id, usuario_id, datos
+    )
 
 
 @router_comercio.get(

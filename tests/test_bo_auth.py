@@ -37,6 +37,15 @@ def test_alta_encargado_ok(bo: UsuarioBO) -> None:
     bo.validar_alta(email_ya_registrado=False, rol="encargado")
 
 
+def test_password_corta(bo: UsuarioBO) -> None:
+    with pytest.raises(ReglaDeNegocioViolada, match="8 caracteres"):
+        bo.validar_password("corta")
+
+
+def test_password_ok(bo: UsuarioBO) -> None:
+    bo.validar_password("demo12345")
+
+
 def test_baja_ultimo_admin(bo: UsuarioBO) -> None:
     with pytest.raises(ReglaDeNegocioViolada, match="último administrador"):
         bo.validar_baja(es_el_mismo_usuario=False, es_ultimo_administrador=True)

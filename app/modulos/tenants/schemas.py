@@ -22,6 +22,9 @@ class TenantResponse(BaseModel):
     slug: str
     nombre: str
     activo: bool
+    admin_nombre: str | None = None
+    admin_email: str | None = None
+    admin_dni: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -59,6 +62,22 @@ class AdministradorCreadoResponse(BaseModel):
 
 class TenantCreadoResponse(TenantResponse):
     administrador: AdministradorCreadoResponse
+
+
+class TenantUsuarioResponse(BaseModel):
+    id: str
+    nombre: str
+    email: str
+    dni: str
+    rol: str
+
+
+class TenantDetalleResponse(TenantResponse):
+    usuarios: list[TenantUsuarioResponse]
+
+
+class CambiarPasswordUsuarioRequest(BaseModel):
+    password: str = Field(min_length=8)
 
 
 class ContextoHostResponse(BaseModel):
