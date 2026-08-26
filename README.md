@@ -39,6 +39,8 @@ Reglas clave: commit solo en service, IDs débiles entre módulos, tablas con pr
 
 Ver `AGENTS.md` para la guía completa de convenciones.
 
+Diagramas de secuencia por módulo (Mermaid): [docs/diagramas/README.md](docs/diagramas/README.md).
+
 ## Análisis WinSales → módulos
 
 Documentación derivada de `WINSALES.mdb` (inventario de módulos y priorización):
