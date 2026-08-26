@@ -11,6 +11,7 @@ from app.modulos.bancos.schemas import (
     CrearValorRequest,
     CuentaBancariaResponse,
     DepositarValorRequest,
+    EntregarValorRequest,
     MovimientoBancarioResponse,
     ValorBancarioResponse,
 )
@@ -95,3 +96,14 @@ async def depositar_valor(
     valor_id: str, datos: DepositarValorRequest, sesion: Sesion
 ) -> ValorBancarioResponse:
     return await BancosService(sesion).depositar_valor(valor_id, datos)
+
+
+@router.post(
+    "/valores/{valor_id}/entregar",
+    response_model=ValorBancarioResponse,
+    operation_id="entregar_valor_bancario",
+)
+async def entregar_valor(
+    valor_id: str, datos: EntregarValorRequest, sesion: Sesion
+) -> ValorBancarioResponse:
+    return await BancosService(sesion).entregar_valor(valor_id, datos)

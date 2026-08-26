@@ -60,6 +60,8 @@ async def crear_tablas() -> None:
     async with engine.begin() as conexion:
         await conexion.run_sync(Base.metadata.create_all)
         await conexion.run_sync(_asegurar_columnas_proveedores)
+        await conexion.run_sync(_asegurar_caja)
+        await conexion.run_sync(_asegurar_bancos)
 
 
 def _asegurar_columnas_proveedores(conexion) -> None:
@@ -88,3 +90,83 @@ def _asegurar_columnas_proveedores(conexion) -> None:
         conexion.execute(
             text(f"ALTER TABLE proveedores_proveedor ADD COLUMN {nombre} {tipo}")
         )
+
+
+def _asegurar_caja(conexion) -> None:
+    """Permite varios turnos el mismo día y asocia movimientos a la sesión."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(conexion)
+    dialecto = conexion.dialect.name
+    if "caja_sesion" in inspector.get_table_names():
+        if dialecto == "postgresql":
+            conexion.execute(
+                text("ALTER TABLE caja_sesion DROP CONSTRAINT IF EXISTS uq_caja_sesion_dia")
+            )
+        else:
+            conexion.execute(text("DROP INDEX IF EXISTS uq_caja_sesion_dia"))
+            _quitar_unique_sesion_sqlite(conexion)
+    if "caja_movimiento" not in inspector.get_table_names():
+        return
+    existentes = {col["name"] for col in inspector.get_columns("caja_movimiento")}
+    if "sesion_id" not in existentes:
+        conexion.execute(
+            text("ALTER TABLE caja_movimiento ADD COLUMN sesion_id VARCHAR(36) DEFAULT ''")
+        )
+    if "caja_sesion" not in inspector.get_table_names():
+        return
+    cols_sesion = {col["name"] for col in inspector.get_columns("caja_sesion")}
+    extras_sesion: list[tuple[str, str]] = [
+        ("cheques_esperado", "FLOAT"),
+        ("cheques_contado", "FLOAT"),
+        ("cheques_diferencia", "FLOAT"),
+        ("tarjetas_esperado", "FLOAT"),
+        ("tarjetas_contado", "FLOAT"),
+        ("tarjetas_diferencia", "FLOAT"),
+    ]
+    for nombre, tipo in extras_sesion:
+        if nombre in cols_sesion:
+            continue
+        conexion.execute(text(f"ALTER TABLE caja_sesion ADD COLUMN {nombre} {tipo}"))
+
+
+def _quitar_unique_sesion_sqlite(conexion) -> None:
+    """SQLite guarda UNIQUE(tenant, fecha) como autoindex; hay que recrear la tabla."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(conexion)
+    uniques = inspector.get_unique_constraints("caja_sesion")
+    hay_unique_dia = any(
+        set(u.get("column_names") or []) == {"tenant_id", "fecha"} for u in uniques
+    )
+    if not hay_unique_dia:
+        return
+    cols = [c["name"] for c in inspector.get_columns("caja_sesion")]
+    lista = ", ".join(cols)
+    conexion.execute(text("DROP TABLE IF EXISTS caja_sesion_tmp"))
+    conexion.execute(text(f"CREATE TABLE caja_sesion_tmp AS SELECT {lista} FROM caja_sesion"))
+    conexion.execute(text("DROP TABLE caja_sesion"))
+    conexion.execute(text("ALTER TABLE caja_sesion_tmp RENAME TO caja_sesion"))
+    conexion.execute(text("CREATE INDEX IF NOT EXISTS ix_caja_sesion_tenant_id ON caja_sesion (tenant_id)"))
+    conexion.execute(text("CREATE INDEX IF NOT EXISTS ix_caja_sesion_fecha ON caja_sesion (fecha)"))
+
+
+def _asegurar_bancos(conexion) -> None:
+    """Campos de cartera: de quién se recibió y a quién se entregó."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(conexion)
+    if "bancos_valor" not in inspector.get_table_names():
+        return
+    existentes = {col["name"] for col in inspector.get_columns("bancos_valor")}
+    extras: list[tuple[str, str]] = [
+        ("recibido_de", "VARCHAR(120) DEFAULT ''"),
+        ("entregado_a", "VARCHAR(120) DEFAULT ''"),
+        ("fecha_entrega", "DATE"),
+        ("origen", "VARCHAR(20) DEFAULT ''"),
+        ("origen_id", "VARCHAR(36) DEFAULT ''"),
+    ]
+    for nombre, tipo in extras:
+        if nombre in existentes:
+            continue
+        conexion.execute(text(f"ALTER TABLE bancos_valor ADD COLUMN {nombre} {tipo}"))

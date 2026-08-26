@@ -23,7 +23,7 @@ class Recibo(ConTenant, Base):
     cliente_id: Mapped[str] = mapped_column(String(36), index=True)
     fecha: Mapped[date] = mapped_column(Date)
     monto: Mapped[float] = mapped_column(Float)
-    # efectivo | transferencia | tarjeta
+    # efectivo | transferencia | tarjeta | cheque
     medio: Mapped[str] = mapped_column(String(20), default="efectivo")
     observacion: Mapped[str] = mapped_column(String(200), default="")
     creado_en: Mapped[datetime] = mapped_column(

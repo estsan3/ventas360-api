@@ -78,14 +78,17 @@ class CajaLocal:
         self._bo.validar_movimiento(tipo, medio, monto)
         if await self._dao.existe_referencia(referencia_tipo, referencia_id):
             return
+        dia = fecha or date.today()
+        abierta = await self._dao.buscar_abierta(dia)
         await self._dao.guardar(
             MovimientoCaja(
-                fecha=fecha or date.today(),
+                fecha=dia,
                 tipo=tipo,
                 medio=medio,
                 monto=round(monto, 2),
                 concepto=concepto,
                 referencia_tipo=referencia_tipo,
                 referencia_id=referencia_id,
+                sesion_id=abierta.id if abierta else "",
             )
         )

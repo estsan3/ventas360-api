@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 TipoMovBancario = Literal["credito", "debito"]
 TipoValor = Literal["cheque_tercero", "cheque_propio"]
-EstadoValor = Literal["en_cartera", "depositado", "cobrado", "rechazado"]
+EstadoValor = Literal["en_cartera", "depositado", "cobrado", "rechazado", "entregado"]
 
 
 class CuentaBancariaResponse(BaseModel):
@@ -54,10 +54,24 @@ class ValorBancarioResponse(BaseModel):
     numero: str
     librador: str
     banco_emisor: str
+    recibido_de: str = ""
+    entregado_a: str = ""
+    fecha_entrega: date | None = None
+    origen: str = ""
+    origen_id: str = ""
     cuenta_destino_id: str | None
     observacion: str
 
     model_config = {"from_attributes": True}
+
+
+class DatosChequeRequest(BaseModel):
+    numero: str = Field(min_length=1, max_length=40)
+    banco_emisor: str = Field(min_length=1, max_length=80)
+    librador: str = Field(default="", max_length=120)
+    fecha: date | None = None
+    fecha_vto: date | None = None
+    recibido_de: str = Field(default="", max_length=120)
 
 
 class CrearValorRequest(BaseModel):
@@ -68,8 +82,14 @@ class CrearValorRequest(BaseModel):
     numero: str = Field(default="", max_length=40)
     librador: str = Field(default="", max_length=120)
     banco_emisor: str = Field(default="", max_length=80)
+    recibido_de: str = Field(default="", max_length=120)
     observacion: str = Field(default="", max_length=200)
 
 
 class DepositarValorRequest(BaseModel):
     cuenta_id: str | None = Field(default=None, max_length=36)
+
+
+class EntregarValorRequest(BaseModel):
+    destinatario: str = Field(min_length=2, max_length=120)
+    fecha: date | None = None

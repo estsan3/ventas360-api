@@ -5,7 +5,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-MedioCobro = Literal["efectivo", "transferencia", "tarjeta"]
+from app.modulos.bancos.schemas import DatosChequeRequest
+
+MedioCobro = Literal["efectivo", "transferencia", "tarjeta", "cheque"]
 
 
 class ImputacionResponse(BaseModel):
@@ -40,3 +42,4 @@ class CrearReciboRequest(BaseModel):
     medio: MedioCobro = "efectivo"
     observacion: str = Field(default="", max_length=200)
     imputaciones: list[CrearImputacionRequest] = Field(min_length=1)
+    cheque: DatosChequeRequest | None = None

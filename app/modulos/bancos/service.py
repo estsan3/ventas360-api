@@ -13,6 +13,7 @@ from app.modulos.bancos.schemas import (
     CrearValorRequest,
     CuentaBancariaResponse,
     DepositarValorRequest,
+    EntregarValorRequest,
     MovimientoBancarioResponse,
     ValorBancarioResponse,
 )
@@ -66,17 +67,37 @@ class BancosService:
 
     async def crear_valor(self, datos: CrearValorRequest) -> ValorBancarioResponse:
         self._bo.validar_valor(datos.tipo, datos.monto)
+        self._bo.validar_cheque(datos.numero, datos.banco_emisor, datos.monto)
+        librador = datos.librador.strip()
+        if datos.tipo == "cheque_propio" and not librador:
+            librador = "Propio"
         valor = ValorBancario(
             tipo=datos.tipo,
             estado="en_cartera",
             monto=round(datos.monto, 2),
             fecha=datos.fecha or date.today(),
             fecha_vto=datos.fecha_vto,
-            numero=datos.numero,
-            librador=datos.librador,
-            banco_emisor=datos.banco_emisor,
+            numero=datos.numero.strip(),
+            librador=librador[:120],
+            banco_emisor=datos.banco_emisor.strip(),
+            recibido_de=(datos.recibido_de or librador).strip()[:120],
             observacion=datos.observacion,
         )
+        await self._dao.guardar_valor(valor)
+        await self._sesion.commit()
+        return ValorBancarioResponse.model_validate(valor)
+
+    async def entregar_valor(
+        self, valor_id: str, datos: EntregarValorRequest
+    ) -> ValorBancarioResponse:
+        valor = await self._dao.buscar_valor(valor_id)
+        if valor is None:
+            raise RecursoNoEncontrado("Cheque no encontrado")
+        self._bo.validar_entrega(valor.estado)
+        self._bo.validar_destinatario(datos.destinatario)
+        valor.estado = "entregado"
+        valor.entregado_a = datos.destinatario.strip()[:120]
+        valor.fecha_entrega = datos.fecha or date.today()
         await self._dao.guardar_valor(valor)
         await self._sesion.commit()
         return ValorBancarioResponse.model_validate(valor)

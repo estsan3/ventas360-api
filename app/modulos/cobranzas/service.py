@@ -48,6 +48,7 @@ class CobranzasService:
 
     async def crear(self, datos: CrearReciboRequest) -> ReciboResponse:
         self._bo.validar_medio(datos.medio)
+        self._bo.validar_cheque(datos.medio, datos.cheque is not None)
         self._bo.validar_recibo(
             datos.monto, [i.monto for i in datos.imputaciones]
         )
@@ -96,8 +97,8 @@ class CobranzasService:
             fecha=fecha,
         )
 
-        # Tesorería (B2/B3): efectivo/tarjeta → caja; transferencia → banco.
-        await self._impactar_tesoreria(recibo)
+        # Tesorería: efectivo/tarjeta/cheque → caja; transferencia → banco.
+        await self._impactar_tesoreria(recibo, datos)
 
         await self._sesion.commit()
         await self._sesion.refresh(recibo, attribute_names=["imputaciones"])
@@ -113,11 +114,37 @@ class CobranzasService:
         )
         return ReciboResponse.model_validate(recibo)
 
-    async def _impactar_tesoreria(self, recibo: Recibo) -> None:
+    async def _impactar_tesoreria(
+        self, recibo: Recibo, datos: CrearReciboRequest
+    ) -> None:
         concepto = f"Cobranza recibo {recibo.id[:8]}"
         if recibo.medio == "transferencia":
             await self._bancos.acreditar(
                 monto=recibo.monto,
+                concepto=concepto,
+                referencia_tipo="recibo",
+                referencia_id=recibo.id,
+                fecha=recibo.fecha,
+            )
+            return
+        if recibo.medio == "cheque":
+            assert datos.cheque is not None
+            ch = datos.cheque
+            await self._bancos.recibir_cheque(
+                monto=recibo.monto,
+                numero=ch.numero,
+                banco_emisor=ch.banco_emisor,
+                librador=ch.librador,
+                fecha=ch.fecha or recibo.fecha,
+                fecha_vto=ch.fecha_vto,
+                recibido_de=ch.recibido_de or ch.librador,
+                origen="recibo",
+                origen_id=recibo.id,
+                observacion=recibo.observacion,
+            )
+            await self._caja.registrar_ingreso(
+                monto=recibo.monto,
+                medio="cheque",
                 concepto=concepto,
                 referencia_tipo="recibo",
                 referencia_id=recibo.id,

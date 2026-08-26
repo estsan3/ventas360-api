@@ -58,7 +58,7 @@ class ValorBancario(ConTenant, Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_nuevo_id)
     # cheque_tercero | cheque_propio
     tipo: Mapped[str] = mapped_column(String(20))
-    # en_cartera | depositado | cobrado | rechazado
+    # en_cartera | depositado | cobrado | rechazado | entregado
     estado: Mapped[str] = mapped_column(String(20), default="en_cartera")
     monto: Mapped[float] = mapped_column(Float)
     fecha: Mapped[date] = mapped_column(Date)
@@ -66,6 +66,11 @@ class ValorBancario(ConTenant, Base):
     numero: Mapped[str] = mapped_column(String(40), default="")
     librador: Mapped[str] = mapped_column(String(120), default="")
     banco_emisor: Mapped[str] = mapped_column(String(80), default="")
+    recibido_de: Mapped[str] = mapped_column(String(120), default="")
+    entregado_a: Mapped[str] = mapped_column(String(120), default="")
+    fecha_entrega: Mapped[date | None] = mapped_column(Date, nullable=True, default=None)
+    origen: Mapped[str] = mapped_column(String(20), default="")
+    origen_id: Mapped[str] = mapped_column(String(36), default="")
     cuenta_destino_id: Mapped[str | None] = mapped_column(
         String(36), nullable=True, default=None
     )

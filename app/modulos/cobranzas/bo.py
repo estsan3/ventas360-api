@@ -2,13 +2,17 @@
 
 from app.core.excepciones import ReglaDeNegocioViolada
 
-MEDIOS = {"efectivo", "transferencia", "tarjeta"}
+MEDIOS = {"efectivo", "transferencia", "tarjeta", "cheque"}
 
 
 class CobranzasBO:
     def validar_medio(self, medio: str) -> None:
         if medio not in MEDIOS:
             raise ReglaDeNegocioViolada(f"Medio de cobro inválido: {medio}")
+
+    def validar_cheque(self, medio: str, hay_cheque: bool) -> None:
+        if medio == "cheque" and not hay_cheque:
+            raise ReglaDeNegocioViolada("Completá los datos del cheque")
 
     def validar_recibo(self, monto: float, imputaciones: list[float]) -> None:
         if monto <= 0:

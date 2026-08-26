@@ -7,7 +7,10 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
+from app.core.dependencias import UsuarioActual, obtener_usuario_actual
 from app.modulos.caja.schemas import (
+    AbrirCajaRequest,
+    CerrarCajaRequest,
     CrearMovimientoCajaRequest,
     MovimientoCajaResponse,
     SaldoCajaResponse,
@@ -25,6 +28,7 @@ router = APIRouter(
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
+Usuario = Annotated[UsuarioActual, Depends(obtener_usuario_actual)]
 
 
 @router.get(
@@ -45,6 +49,28 @@ async def saldo_caja(
     fecha: date | None = Query(default=None),
 ) -> SaldoCajaResponse:
     return await CajaService(sesion).saldo(fecha)
+
+
+@router.post(
+    "/abrir",
+    response_model=SaldoCajaResponse,
+    operation_id="abrir_caja",
+)
+async def abrir_caja(
+    datos: AbrirCajaRequest, sesion: Sesion, usuario: Usuario
+) -> SaldoCajaResponse:
+    return await CajaService(sesion).abrir(datos, usuario.email or usuario.id)
+
+
+@router.post(
+    "/cerrar",
+    response_model=SaldoCajaResponse,
+    operation_id="cerrar_caja",
+)
+async def cerrar_caja(
+    datos: CerrarCajaRequest, sesion: Sesion, usuario: Usuario
+) -> SaldoCajaResponse:
+    return await CajaService(sesion).cerrar(datos, usuario.email or usuario.id)
 
 
 @router.post(
