@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
-from app.core.dependencias import obtener_usuario_actual, requerir_rol
 from app.modulos.bancos.schemas import (
     CrearCuentaBancariaRequest,
     CrearValorRequest,
@@ -16,11 +15,15 @@ from app.modulos.bancos.schemas import (
     ValorBancarioResponse,
 )
 from app.modulos.bancos.service import BancosService
+from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
 
 router = APIRouter(
     prefix="/bancos",
     tags=["Bancos"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[
+        Depends(exigir_usuario_del_comercio),
+        Depends(requerir_modulo("compras")),
+    ],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
@@ -39,7 +42,6 @@ async def listar_cuentas(sesion: Sesion) -> list[CuentaBancariaResponse]:
     "/cuentas",
     response_model=CuentaBancariaResponse,
     status_code=201,
-    dependencies=[Depends(requerir_rol("administrador"))],
     operation_id="crear_cuenta_bancaria",
 )
 async def crear_cuenta(
@@ -76,7 +78,6 @@ async def listar_valores(
     "/valores",
     response_model=ValorBancarioResponse,
     status_code=201,
-    dependencies=[Depends(requerir_rol("administrador"))],
     operation_id="crear_valor_bancario",
 )
 async def crear_valor(
@@ -88,7 +89,6 @@ async def crear_valor(
 @router.post(
     "/valores/{valor_id}/depositar",
     response_model=ValorBancarioResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
     operation_id="depositar_valor_bancario",
 )
 async def depositar_valor(

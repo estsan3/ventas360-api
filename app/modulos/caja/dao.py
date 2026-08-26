@@ -5,6 +5,7 @@ from datetime import date
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.tenant_ctx import del_tenant
 from app.modulos.caja.models import MovimientoCaja
 
 
@@ -20,7 +21,7 @@ class CajaDAO:
     async def listar_por_fecha(self, dia: date) -> list[MovimientoCaja]:
         resultado = await self._sesion.execute(
             select(MovimientoCaja)
-            .where(MovimientoCaja.fecha == dia)
+            .where(del_tenant(MovimientoCaja), MovimientoCaja.fecha == dia)
             .order_by(MovimientoCaja.creado_en.desc())
         )
         return list(resultado.scalars())
@@ -34,6 +35,7 @@ class CajaDAO:
             select(func.count())
             .select_from(MovimientoCaja)
             .where(
+                del_tenant(MovimientoCaja),
                 MovimientoCaja.referencia_tipo == referencia_tipo,
                 MovimientoCaja.referencia_id == referencia_id,
             )
@@ -61,7 +63,7 @@ class CajaDAO:
                     ),
                     0.0,
                 ),
-            ).where(MovimientoCaja.fecha == dia)
+            ).where(del_tenant(MovimientoCaja), MovimientoCaja.fecha == dia)
         )
         ingresos, egresos = resultado.one()
         return float(ingresos), float(egresos)

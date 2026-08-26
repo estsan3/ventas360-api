@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
-from app.core.dependencias import obtener_usuario_actual, requerir_rol
 from app.modulos.precios.schemas import (
     ActualizarListaPrecioRequest,
     CrearListaPrecioRequest,
@@ -16,11 +15,12 @@ from app.modulos.precios.schemas import (
     UpsertPrecioArticuloRequest,
 )
 from app.modulos.precios.service import PreciosService
+from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
 
 router = APIRouter(
     prefix="/precios",
     tags=["Precios"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[Depends(exigir_usuario_del_comercio)],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
@@ -29,6 +29,7 @@ Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
 @router.get(
     "/listas",
     response_model=list[ListaPrecioResponse],
+    dependencies=[Depends(requerir_modulo("articulos", "cta_cte", "mostrador", "compras"))],
     operation_id="listar_listas_precio",
 )
 async def listar_listas(sesion: Sesion) -> list[ListaPrecioResponse]:
@@ -39,7 +40,7 @@ async def listar_listas(sesion: Sesion) -> list[ListaPrecioResponse]:
     "/listas",
     response_model=ListaPrecioResponse,
     status_code=201,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("articulos"))],
     operation_id="crear_lista_precio",
 )
 async def crear_lista(
@@ -51,7 +52,7 @@ async def crear_lista(
 @router.put(
     "/listas/{lista_id}",
     response_model=ListaPrecioResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("articulos"))],
     operation_id="actualizar_lista_precio",
 )
 async def actualizar_lista(
@@ -63,7 +64,7 @@ async def actualizar_lista(
 @router.patch(
     "/listas/{lista_id}/desactivar",
     response_model=ListaPrecioResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("articulos"))],
     operation_id="desactivar_lista_precio",
 )
 async def desactivar_lista(lista_id: str, sesion: Sesion) -> ListaPrecioResponse:
@@ -73,6 +74,7 @@ async def desactivar_lista(lista_id: str, sesion: Sesion) -> ListaPrecioResponse
 @router.get(
     "/listas/{lista_id}/articulos",
     response_model=list[PrecioArticuloResponse],
+    dependencies=[Depends(requerir_modulo("articulos", "cta_cte", "mostrador", "compras"))],
     operation_id="listar_precios_lista",
 )
 async def listar_precios_lista(
@@ -84,7 +86,7 @@ async def listar_precios_lista(
 @router.put(
     "/articulos",
     response_model=PrecioArticuloResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("articulos"))],
     operation_id="upsert_precio_articulo",
 )
 async def upsert_precio(
@@ -96,6 +98,7 @@ async def upsert_precio(
 @router.get(
     "/resolver",
     response_model=PrecioResueltoResponse,
+    dependencies=[Depends(requerir_modulo("articulos", "cta_cte", "mostrador", "compras"))],
     operation_id="resolver_precio",
 )
 async def resolver_precio(

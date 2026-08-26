@@ -7,29 +7,38 @@ from sqlalchemy import Boolean, DateTime, Integer, String, UniqueConstraint, fun
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.core.tenant_ctx import ConTenant
 
 
 def _nuevo_id() -> str:
     return str(uuid.uuid4())
 
 
-class Deposito(Base):
+class Deposito(ConTenant, Base):
     """Depósito / almacén físico."""
 
     __tablename__ = "stock_deposito"
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "codigo", name="uq_stock_deposito_codigo_tenant"),
+    )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_nuevo_id)
-    codigo: Mapped[str] = mapped_column(String(20), unique=True, index=True)
+    codigo: Mapped[str] = mapped_column(String(20), index=True)
     nombre: Mapped[str] = mapped_column(String(120))
     activo: Mapped[bool] = mapped_column(Boolean, default=True)
 
 
-class SaldoStock(Base):
+class SaldoStock(ConTenant, Base):
     """Saldo por artículo y depósito (IDs débiles a productos)."""
 
     __tablename__ = "stock_saldo"
     __table_args__ = (
-        UniqueConstraint("articulo_id", "deposito_id", name="uq_stock_articulo_deposito"),
+        UniqueConstraint(
+            "tenant_id",
+            "articulo_id",
+            "deposito_id",
+            name="uq_stock_articulo_deposito",
+        ),
     )
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_nuevo_id)
@@ -38,7 +47,7 @@ class SaldoStock(Base):
     cantidad: Mapped[int] = mapped_column(Integer, default=0)
 
 
-class MovimientoStock(Base):
+class MovimientoStock(ConTenant, Base):
     """Movimiento de inventario (ajuste, egreso remito, etc.)."""
 
     __tablename__ = "stock_movimiento"

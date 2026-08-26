@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.tenant_ctx import del_tenant, es_del_tenant
 from app.modulos.cobranzas.models import Recibo
 
 
@@ -15,6 +16,7 @@ class CobranzasDAO:
         consulta = (
             select(Recibo)
             .options(selectinload(Recibo.imputaciones))
+            .where(del_tenant(Recibo))
             .order_by(Recibo.fecha.desc(), Recibo.id.desc())
         )
         if cliente_id:
@@ -27,7 +29,8 @@ class CobranzasDAO:
             .options(selectinload(Recibo.imputaciones))
             .where(Recibo.id == recibo_id)
         )
-        return resultado.scalar_one_or_none()
+        recibo = resultado.scalar_one_or_none()
+        return recibo if es_del_tenant(recibo) else None
 
     async def guardar(self, recibo: Recibo) -> Recibo:
         self._sesion.add(recibo)

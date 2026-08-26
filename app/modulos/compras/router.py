@@ -6,14 +6,17 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
-from app.core.dependencias import obtener_usuario_actual, requerir_rol
 from app.modulos.compras.schemas import CompraResponse, CrearCompraRequest
 from app.modulos.compras.service import ComprasService
+from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
 
 router = APIRouter(
     prefix="/compras",
     tags=["Compras"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[
+        Depends(exigir_usuario_del_comercio),
+        Depends(requerir_modulo("compras")),
+    ],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
@@ -36,7 +39,6 @@ async def obtener_compra(compra_id: str, sesion: Sesion) -> CompraResponse:
     "",
     response_model=CompraResponse,
     status_code=201,
-    dependencies=[Depends(requerir_rol("administrador"))],
     operation_id="crear_compra",
 )
 async def crear_compra(datos: CrearCompraRequest, sesion: Sesion) -> CompraResponse:
@@ -46,7 +48,6 @@ async def crear_compra(datos: CrearCompraRequest, sesion: Sesion) -> CompraRespo
 @router.post(
     "/{compra_id}/confirmar",
     response_model=CompraResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
     operation_id="confirmar_compra",
 )
 async def confirmar_compra(compra_id: str, sesion: Sesion) -> CompraResponse:
@@ -56,7 +57,6 @@ async def confirmar_compra(compra_id: str, sesion: Sesion) -> CompraResponse:
 @router.post(
     "/{compra_id}/facturar",
     response_model=CompraResponse,
-    dependencies=[Depends(requerir_rol("administrador"))],
     operation_id="facturar_remito_compra",
 )
 async def facturar_remito_compra(compra_id: str, sesion: Sesion) -> CompraResponse:

@@ -3,10 +3,11 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, Integer, JSON, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.core.tenant_ctx import ConTenant
 
 
 def _nuevo_id() -> str:
@@ -21,7 +22,7 @@ def _mapeo_default() -> list[dict[str, str]]:
     ]
 
 
-class Proveedor(Base):
+class Proveedor(ConTenant, Base):
     """Proveedor del comercio."""
 
     __tablename__ = "proveedores_proveedor"

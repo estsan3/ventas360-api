@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.excepciones import RecursoNoEncontrado
 from app.core.seguridad import crear_token_acceso, hashear_password
+from app.core.tenant_ctx import tenant_id_actual
 from app.modulos.auth.bo import UsuarioBO
 from app.modulos.auth.dao import UsuarioDAO
 from app.modulos.auth.models import Usuario
@@ -17,33 +18,68 @@ from app.modulos.auth.schemas import (
     LoginResponse,
     UsuarioResponse,
 )
+from app.modulos.tenants.contrato import ContratoTenants, TenantsLocal
 
 
 class AuthService:
     """Casos de uso de autenticación y gestión de usuarios."""
 
-    def __init__(self, sesion: AsyncSession) -> None:
+    def __init__(
+        self,
+        sesion: AsyncSession,
+        tenants: ContratoTenants | None = None,
+    ) -> None:
         self._sesion = sesion
         self._dao = UsuarioDAO(sesion)
         self._bo = UsuarioBO()
+        self._tenants = tenants or TenantsLocal(sesion)
 
-    async def login(self, datos: LoginRequest) -> LoginResponse:
-        """Valida credenciales y emite un JWT con la identidad del usuario."""
+    async def login(self, datos: LoginRequest, host: str) -> LoginResponse:
+        """Valida credenciales, el Host del comercio y emite un JWT."""
         usuario = await self._dao.buscar_por_email(datos.email)
         self._bo.validar_credenciales(
             usuario.password_hash if usuario else None,
             datos.password,
         )
         assert usuario is not None  # garantizado por validar_credenciales
+        await self._exigir_host(usuario, host)
 
-        # Los claims extra (email, rol) permiten autorizar sin ir a la base.
         token = crear_token_acceso(
             subject=usuario.id,
-            datos_extra={"email": usuario.email, "rol": usuario.rol},
+            datos_extra={
+                "email": usuario.email,
+                "rol": usuario.rol,
+                "tenant_id": usuario.tenant_id,
+            },
         )
         return LoginResponse(
             access_token=token,
-            usuario=UsuarioResponse.model_validate(usuario),
+            usuario=await self._con_permisos(usuario),
+        )
+
+    async def obtener_perfil(self, usuario_id: str, host: str) -> UsuarioResponse:
+        usuario = await self._dao.buscar_por_id(usuario_id)
+        if usuario is None:
+            raise RecursoNoEncontrado("Usuario no encontrado")
+        await self._exigir_host(usuario, host)
+        return await self._con_permisos(usuario)
+
+    async def _con_permisos(self, usuario: Usuario) -> UsuarioResponse:
+        permisos: list[str] = []
+        if usuario.tenant_id:
+            permisos = await self._tenants.modulos_habilitados(
+                usuario.tenant_id, usuario.rol
+            )
+        base = UsuarioResponse.model_validate(usuario)
+        return base.model_copy(update={"permisos": permisos})
+
+    async def _exigir_host(self, usuario: Usuario, host: str) -> None:
+        ctx = await self._tenants.contexto_desde_host(host)
+        self._bo.validar_login_host(
+            tenant_id_usuario=usuario.tenant_id,
+            rol=usuario.rol,
+            tipo_host=ctx.tipo,
+            tenant_id_host=ctx.tenant_id,
         )
 
     async def crear_usuario(self, datos: CrearUsuarioRequest) -> UsuarioResponse:
@@ -60,6 +96,7 @@ class AuthService:
             email=datos.email,
             password_hash=hashear_password(password),
             rol=datos.rol,
+            tenant_id=tenant_id_actual(),
         )
         await self._dao.guardar(usuario)
         await self._sesion.commit()
@@ -88,6 +125,7 @@ class AuthService:
             email=f"vendedor-{sufijo}@pendiente.ventas360",
             password_hash=hashear_password(f"provisoria-{sufijo}"),
             rol="vendedor",
+            tenant_id=tenant_id_actual(),
         )
         await self._dao.guardar(usuario)
         await self._sesion.commit()
@@ -95,7 +133,7 @@ class AuthService:
 
     async def eliminar_usuario(self, usuario_id: str, solicitante_id: str) -> None:
         """Baja de un usuario del backoffice."""
-        usuario = await self._dao.buscar_por_id(usuario_id)
+        usuario = await self._dao.buscar_del_tenant(usuario_id)
         if usuario is None:
             raise RecursoNoEncontrado("Usuario no encontrado")
 

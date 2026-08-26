@@ -3,6 +3,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.excepciones import RecursoNoEncontrado, ReglaDeNegocioViolada
+from app.core.tenant_ctx import tenant_id_actual
 from app.modulos.parametros.bo import ParametrosBO
 from app.modulos.parametros.dao import ParametrosDAO
 from app.modulos.parametros.models import Talonario
@@ -31,7 +32,7 @@ class ParametrosService:
         self._bo = ParametrosBO()
 
     async def obtener_negocio(self) -> ParametrosNegocio:
-        valores = await self._dao.obtener_todos()
+        valores = await self._dao.obtener_todos(tenant_id_actual())
         return ParametrosNegocio(
             iva_porcentaje=float(
                 valores.get("iva_porcentaje", _DEFAULTS_NEGOCIO.iva_porcentaje)
@@ -41,6 +42,7 @@ class ParametrosService:
 
     async def guardar_negocio(self, datos: ParametrosNegocio) -> ParametrosNegocio:
         await self._dao.guardar_varios(
+            tenant_id_actual(),
             {
                 "iva_porcentaje": str(datos.iva_porcentaje),
                 "moneda": datos.moneda,
@@ -50,7 +52,7 @@ class ParametrosService:
         return datos
 
     async def obtener_operativos(self) -> ParametrosOperativos:
-        valores = await self._dao.obtener_todos()
+        valores = await self._dao.obtener_todos(tenant_id_actual())
         condiciones_raw = valores.get(
             "condiciones_pago", ",".join(_DEFAULTS_OPERATIVOS.condiciones_pago)
         )
@@ -71,6 +73,7 @@ class ParametrosService:
         if not datos.condiciones_pago:
             raise ReglaDeNegocioViolada("Debe haber al menos una condición de pago")
         await self._dao.guardar_varios(
+            tenant_id_actual(),
             {
                 "sucursal_codigo": datos.sucursal_codigo,
                 "sucursal_nombre": datos.sucursal_nombre,
@@ -81,7 +84,7 @@ class ParametrosService:
         return datos
 
     async def obtener_preferencias(self) -> PreferenciasNotificacion:
-        valores = await self._dao.obtener_todos()
+        valores = await self._dao.obtener_todos(tenant_id_actual())
 
         def _leer_bool(clave: str, default: bool) -> bool:
             return valores.get(clave, str(default)).lower() == "true"
@@ -96,6 +99,7 @@ class ParametrosService:
         self, datos: PreferenciasNotificacion
     ) -> PreferenciasNotificacion:
         await self._dao.guardar_varios(
+            tenant_id_actual(),
             {
                 "notif_stock_bajo": str(datos.stock_bajo),
                 "notif_venta_confirmada": str(datos.venta_confirmada),
@@ -106,14 +110,16 @@ class ParametrosService:
         return datos
 
     async def listar_talonarios(self) -> list[TalonarioResponse]:
-        items = await self._dao.listar_talonarios()
+        items = await self._dao.listar_talonarios(tenant_id_actual())
         return [TalonarioResponse.model_validate(t) for t in items]
 
     async def upsert_talonario(
         self, datos: UpsertTalonarioRequest
     ) -> TalonarioResponse:
         self._bo.validar_talonario(datos.tipo_comprobante, datos.proximo_numero)
-        existente = await self._dao.buscar_talonario_por_tipo(datos.tipo_comprobante)
+        existente = await self._dao.buscar_talonario_por_tipo(
+            tenant_id_actual(), datos.tipo_comprobante
+        )
         if existente is None:
             existente = Talonario(tipo_comprobante=datos.tipo_comprobante)
         existente.prefijo = datos.prefijo
@@ -126,7 +132,9 @@ class ParametrosService:
     async def asignar_numero(self, tipo_comprobante: str) -> NumeroAsignadoResponse:
         """Reserva e incrementa el próximo número del talonario (sin commit)."""
         self._bo.validar_talonario(tipo_comprobante, 1)
-        talonario = await self._dao.buscar_talonario_por_tipo(tipo_comprobante)
+        talonario = await self._dao.buscar_talonario_por_tipo(
+            tenant_id_actual(), tipo_comprobante
+        )
         if talonario is None or not talonario.activo:
             raise RecursoNoEncontrado(
                 f"No hay talonario activo para {tipo_comprobante}"

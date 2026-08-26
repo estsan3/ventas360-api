@@ -3,6 +3,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.tenant_ctx import del_tenant, es_del_tenant
 from app.modulos.precios.models import ListaPrecio, PrecioArticulo
 
 
@@ -11,23 +12,31 @@ class PreciosDAO:
         self._sesion = sesion
 
     async def listar_listas(self, solo_activas: bool = True) -> list[ListaPrecio]:
-        consulta = select(ListaPrecio).order_by(ListaPrecio.codigo)
+        consulta = (
+            select(ListaPrecio)
+            .where(del_tenant(ListaPrecio))
+            .order_by(ListaPrecio.codigo)
+        )
         if solo_activas:
             consulta = consulta.where(ListaPrecio.activo.is_(True))
         return list((await self._sesion.execute(consulta)).scalars())
 
     async def buscar_lista(self, lista_id: str) -> ListaPrecio | None:
-        return await self._sesion.get(ListaPrecio, lista_id)
+        lista = await self._sesion.get(ListaPrecio, lista_id)
+        return lista if es_del_tenant(lista) else None
 
     async def buscar_lista_por_codigo(self, codigo: str) -> ListaPrecio | None:
         resultado = await self._sesion.execute(
-            select(ListaPrecio).where(ListaPrecio.codigo == codigo)
+            select(ListaPrecio).where(
+                del_tenant(ListaPrecio), ListaPrecio.codigo == codigo
+            )
         )
         return resultado.scalar_one_or_none()
 
     async def buscar_lista_default(self) -> ListaPrecio | None:
         resultado = await self._sesion.execute(
             select(ListaPrecio).where(
+                del_tenant(ListaPrecio),
                 ListaPrecio.es_default.is_(True),
                 ListaPrecio.activo.is_(True),
             )
@@ -44,6 +53,7 @@ class PreciosDAO:
     ) -> PrecioArticulo | None:
         resultado = await self._sesion.execute(
             select(PrecioArticulo).where(
+                del_tenant(PrecioArticulo),
                 PrecioArticulo.lista_id == lista_id,
                 PrecioArticulo.articulo_id == articulo_id,
             )
@@ -58,7 +68,7 @@ class PreciosDAO:
     async def listar_precios_lista(self, lista_id: str) -> list[PrecioArticulo]:
         resultado = await self._sesion.execute(
             select(PrecioArticulo)
-            .where(PrecioArticulo.lista_id == lista_id)
+            .where(del_tenant(PrecioArticulo), PrecioArticulo.lista_id == lista_id)
             .order_by(PrecioArticulo.articulo_id)
         )
         return list(resultado.scalars())

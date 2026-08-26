@@ -6,14 +6,17 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
-from app.core.dependencias import obtener_usuario_actual
 from app.modulos.cobranzas.schemas import CrearReciboRequest, ReciboResponse
 from app.modulos.cobranzas.service import CobranzasService
+from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
 
 router = APIRouter(
     prefix="/cobranzas",
     tags=["Cobranzas"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[
+        Depends(exigir_usuario_del_comercio),
+        Depends(requerir_modulo("cta_cte")),
+    ],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]

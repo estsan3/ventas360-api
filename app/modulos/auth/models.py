@@ -14,15 +14,16 @@ def _nuevo_id() -> str:
 
 
 class Usuario(Base):
-    """Usuario del backoffice (administrador o vendedor)."""
+    """Usuario del backoffice. tenant_id nulo = superadmin de plataforma."""
 
     __tablename__ = "auth_usuario"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_nuevo_id)
+    tenant_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     nombre: Mapped[str] = mapped_column(String(120))
     dni: Mapped[str] = mapped_column(String(20))
     email: Mapped[str] = mapped_column(String(120), unique=True, index=True)
     # Hash bcrypt; NUNCA se almacena la contraseña en texto plano.
     password_hash: Mapped[str] = mapped_column(String(100))
-    # Rol de negocio: "administrador" | "vendedor".
+    # Rol: superadmin | administrador | encargado | vendedor.
     rol: Mapped[str] = mapped_column(String(20))

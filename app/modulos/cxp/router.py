@@ -6,14 +6,17 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
-from app.core.dependencias import obtener_usuario_actual
 from app.modulos.cxp.schemas import EstadoCuentaProveedorResponse, SaldoProveedorResponse
 from app.modulos.cxp.service import CxpService
+from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
 
 router = APIRouter(
     prefix="/cxp",
     tags=["Cuenta corriente proveedores"],
-    dependencies=[Depends(obtener_usuario_actual)],
+    dependencies=[
+        Depends(exigir_usuario_del_comercio),
+        Depends(requerir_modulo("compras")),
+    ],
 )
 
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]

@@ -22,6 +22,7 @@ from app.modulos.precios.models import ListaPrecio, PrecioArticulo
 from app.modulos.productos.models import Producto
 from app.modulos.proveedores.models import Proveedor
 from app.modulos.stock.models import Deposito, MovimientoStock, SaldoStock
+from app.modulos.tenants.ids import ID_TENANT_DEMO
 from app.modulos.ventas.models import LineaPedido, Pedido
 from app.modulos.zonas.models import Zona
 
@@ -71,6 +72,7 @@ async def asegurar_casuistica_rica(sesion: AsyncSession) -> bool:
                     email="lparedes@ventas360.com",
                     password_hash=pwd,
                     rol="vendedor",
+                    tenant_id=ID_TENANT_DEMO,
                 ),
                 Usuario(
                     id="usr-contable-1",
@@ -79,6 +81,7 @@ async def asegurar_casuistica_rica(sesion: AsyncSession) -> bool:
                     email="gotano@ventas360.com",
                     password_hash=pwd,
                     rol="administrador",
+                    tenant_id=ID_TENANT_DEMO,
                 ),
             ]
         )

@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.tenant_ctx import del_tenant, es_del_tenant
 from app.modulos.compras.models import Compra
 
 
@@ -15,6 +16,7 @@ class ComprasDAO:
         consulta = (
             select(Compra)
             .options(selectinload(Compra.lineas))
+            .where(del_tenant(Compra))
             .order_by(Compra.fecha.desc(), Compra.id.desc())
         )
         if tipo:
@@ -27,7 +29,8 @@ class ComprasDAO:
             .options(selectinload(Compra.lineas))
             .where(Compra.id == compra_id)
         )
-        return resultado.scalar_one_or_none()
+        compra = resultado.scalar_one_or_none()
+        return compra if es_del_tenant(compra) else None
 
     async def guardar(self, compra: Compra) -> Compra:
         self._sesion.add(compra)

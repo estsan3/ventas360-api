@@ -12,13 +12,14 @@ from sqlalchemy import Date, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.core.tenant_ctx import ConTenant
 
 
 def _nuevo_id() -> str:
     return str(uuid.uuid4())
 
 
-class Pedido(Base):
+class Pedido(ConTenant, Base):
     """Comprobante de venta tipado."""
 
     __tablename__ = "ventas_pedido"
@@ -44,7 +45,7 @@ class Pedido(Base):
     )
 
 
-class LineaPedido(Base):
+class LineaPedido(ConTenant, Base):
     """Línea de comprobante (snapshot de precio/cantidad)."""
 
     __tablename__ = "ventas_linea"

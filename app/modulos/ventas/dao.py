@@ -6,6 +6,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.tenant_ctx import del_tenant, es_del_tenant
 from app.modulos.ventas.models import LineaPedido, Pedido
 
 
@@ -21,6 +22,7 @@ class VentasDAO:
         consulta = (
             select(Pedido)
             .options(selectinload(Pedido.lineas))
+            .where(del_tenant(Pedido))
             .order_by(Pedido.fecha.desc(), Pedido.id.desc())
         )
         if tipo:
@@ -36,7 +38,8 @@ class VentasDAO:
             .options(selectinload(Pedido.lineas))
             .where(Pedido.id == pedido_id)
         )
-        return resultado.scalar_one_or_none()
+        pedido = resultado.scalar_one_or_none()
+        return pedido if es_del_tenant(pedido) else None
 
     async def guardar(self, pedido: Pedido) -> Pedido:
         self._sesion.add(pedido)
@@ -52,6 +55,7 @@ class VentasDAO:
                 func.count(Pedido.id),
                 func.coalesce(func.sum(Pedido.total), 0.0),
             )
+            .where(del_tenant(Pedido))
             .where(Pedido.fecha >= inicio)
             .where(Pedido.fecha < fin_exclusivo)
             .where(
@@ -78,7 +82,11 @@ class VentasDAO:
         resultado = await self._sesion.execute(
             select(func.count())
             .select_from(Pedido)
-            .where(Pedido.tipo == tipo, Pedido.estado == estado)
+            .where(
+                del_tenant(Pedido),
+                Pedido.tipo == tipo,
+                Pedido.estado == estado,
+            )
         )
         return int(resultado.scalar_one())
 
@@ -95,6 +103,8 @@ class VentasDAO:
             )
             .join(Pedido, Pedido.id == LineaPedido.pedido_id)
             .where(
+                del_tenant(Pedido),
+                del_tenant(LineaPedido),
                 Pedido.estado.in_(("confirmado", "entregado", "facturado")),
                 Pedido.tipo.in_(("pedido", "remito", "factura")),
             )

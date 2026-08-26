@@ -7,13 +7,14 @@ from sqlalchemy import Date, DateTime, Float, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.core.tenant_ctx import ConTenant
 
 
 def _nuevo_id() -> str:
     return str(uuid.uuid4())
 
 
-class Recibo(Base):
+class Recibo(ConTenant, Base):
     """Recibo de cobranza a cliente."""
 
     __tablename__ = "cobranzas_recibo"
@@ -34,7 +35,7 @@ class Recibo(Base):
     )
 
 
-class ImputacionRecibo(Base):
+class ImputacionRecibo(ConTenant, Base):
     """Imputación de un recibo a una factura (ID débil)."""
 
     __tablename__ = "cobranzas_imputacion"

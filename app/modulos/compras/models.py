@@ -7,13 +7,14 @@ from sqlalchemy import Date, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
+from app.core.tenant_ctx import ConTenant
 
 
 def _nuevo_id() -> str:
     return str(uuid.uuid4())
 
 
-class Compra(Base):
+class Compra(ConTenant, Base):
     """Comprobante de compra tipado (remito_compra | factura_compra)."""
 
     __tablename__ = "compras_compra"
@@ -36,7 +37,7 @@ class Compra(Base):
     )
 
 
-class LineaCompra(Base):
+class LineaCompra(ConTenant, Base):
     __tablename__ = "compras_linea"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_nuevo_id)

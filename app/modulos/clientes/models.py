@@ -6,13 +6,14 @@ from sqlalchemy import Boolean, Float, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
+from app.core.tenant_ctx import ConTenant
 
 
 def _nuevo_id() -> str:
     return str(uuid.uuid4())
 
 
-class Cliente(Base):
+class Cliente(ConTenant, Base):
     """Cliente del comercio (datos comerciales y fiscales básicos)."""
 
     __tablename__ = "clientes_cliente"

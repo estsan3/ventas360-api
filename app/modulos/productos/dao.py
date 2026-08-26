@@ -4,6 +4,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.paginacion import calcular_offset
+from app.core.tenant_ctx import del_tenant, es_del_tenant
 from app.modulos.productos.models import Producto
 
 
@@ -21,7 +22,7 @@ class ProductoDAO:
         page: int = 1,
         page_size: int = 50,
     ) -> tuple[list[Producto], int]:
-        filtros = []
+        filtros = [del_tenant(Producto)]
         if activo is not None:
             filtros.append(Producto.activo.is_(activo))
         if q:
@@ -36,11 +37,8 @@ class ProductoDAO:
                 )
             )
 
-        consulta_total = select(func.count()).select_from(Producto)
-        consulta = select(Producto).order_by(Producto.nombre)
-        if filtros:
-            consulta_total = consulta_total.where(*filtros)
-            consulta = consulta.where(*filtros)
+        consulta_total = select(func.count()).select_from(Producto).where(*filtros)
+        consulta = select(Producto).where(*filtros).order_by(Producto.nombre)
 
         total = int((await self._sesion.execute(consulta_total)).scalar_one())
         resultado = await self._sesion.execute(
@@ -49,11 +47,12 @@ class ProductoDAO:
         return list(resultado.scalars()), total
 
     async def buscar_por_id(self, producto_id: str) -> Producto | None:
-        return await self._sesion.get(Producto, producto_id)
+        producto = await self._sesion.get(Producto, producto_id)
+        return producto if es_del_tenant(producto) else None
 
     async def buscar_por_sku(self, sku: str) -> Producto | None:
         resultado = await self._sesion.execute(
-            select(Producto).where(Producto.sku == sku)
+            select(Producto).where(del_tenant(Producto), Producto.sku == sku)
         )
         return resultado.scalar_one_or_none()
 
@@ -65,21 +64,23 @@ class ProductoDAO:
     async def listar_activos(self) -> list[Producto]:
         resultado = await self._sesion.execute(
             select(Producto)
-            .where(Producto.activo.is_(True))
+            .where(del_tenant(Producto), Producto.activo.is_(True))
             .order_by(Producto.nombre)
         )
         return list(resultado.scalars())
 
     async def contar_activos(self) -> int:
         resultado = await self._sesion.execute(
-            select(func.count()).select_from(Producto).where(Producto.activo.is_(True))
+            select(func.count())
+            .select_from(Producto)
+            .where(del_tenant(Producto), Producto.activo.is_(True))
         )
         return int(resultado.scalar_one())
 
     async def stock_total(self) -> int:
         resultado = await self._sesion.execute(
             select(func.coalesce(func.sum(Producto.stock), 0)).where(
-                Producto.activo.is_(True)
+                del_tenant(Producto), Producto.activo.is_(True)
             )
         )
         return int(resultado.scalar_one())

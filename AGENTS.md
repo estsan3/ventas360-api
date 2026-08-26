@@ -87,4 +87,6 @@ poetry run python -m scripts.seed
 
 ## Demo
 
-Login: `admin@ventas360.com` / `demo12345` · Docs: `/docs` · Health: `/health`
+Login comercio: `admin@ventas360.com` / `demo12345` en `demo.localhost:4201`.
+Plataforma: `super@ventas360.com` / `demo12345` en `admin.localhost:4201`.
+Docs: `/docs` · Health: `/health`

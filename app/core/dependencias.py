@@ -28,6 +28,7 @@ class UsuarioActual:
     id: str
     email: str
     rol: str
+    tenant_id: str | None
 
 
 def _token_desde_request(
@@ -55,6 +56,7 @@ def obtener_usuario_actual(
         id=claims.get("sub", ""),
         email=claims.get("email", ""),
         rol=claims.get("rol", ""),
+        tenant_id=claims.get("tenant_id"),
     )
 
 

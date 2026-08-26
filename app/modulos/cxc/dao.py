@@ -3,6 +3,7 @@
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.tenant_ctx import del_tenant
 from app.modulos.cxc.models import MovimientoCxc
 
 
@@ -18,7 +19,10 @@ class CxcDAO:
     async def listar_por_cliente(self, cliente_id: str) -> list[MovimientoCxc]:
         resultado = await self._sesion.execute(
             select(MovimientoCxc)
-            .where(MovimientoCxc.cliente_id == cliente_id)
+            .where(
+                del_tenant(MovimientoCxc),
+                MovimientoCxc.cliente_id == cliente_id,
+            )
             .order_by(MovimientoCxc.fecha.desc(), MovimientoCxc.creado_en.desc())
         )
         return list(resultado.scalars())
@@ -30,6 +34,7 @@ class CxcDAO:
             select(func.count())
             .select_from(MovimientoCxc)
             .where(
+                del_tenant(MovimientoCxc),
                 MovimientoCxc.referencia_tipo == referencia_tipo,
                 MovimientoCxc.referencia_id == referencia_id,
             )
@@ -57,7 +62,10 @@ class CxcDAO:
                     ),
                     0.0,
                 ),
-            ).where(MovimientoCxc.cliente_id == cliente_id)
+            ).where(
+                del_tenant(MovimientoCxc),
+                MovimientoCxc.cliente_id == cliente_id,
+            )
         )
         debe, haber = resultado.one()
         return float(debe), float(haber)
@@ -94,7 +102,9 @@ class CxcDAO:
                         else_=None,
                     )
                 ),
-            ).group_by(MovimientoCxc.cliente_id)
+            )
+            .where(del_tenant(MovimientoCxc))
+            .group_by(MovimientoCxc.cliente_id)
         )
         return [
             (str(r[0]), float(r[1]), float(r[2]), r[3], r[4]) for r in resultado.all()

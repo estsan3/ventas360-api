@@ -2,12 +2,12 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import obtener_configuracion
 from app.core.database import obtener_sesion
-from app.core.dependencias import UsuarioActual, obtener_usuario_actual, requerir_rol
+from app.core.dependencias import UsuarioActual, obtener_usuario_actual
 from app.core.seguridad import NOMBRE_COOKIE_ACCESO
 from app.modulos.auth.schemas import (
     CrearUsuarioRequest,
@@ -17,16 +17,26 @@ from app.modulos.auth.schemas import (
     UsuarioResponse,
 )
 from app.modulos.auth.service import AuthService
+from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
+from app.modulos.tenants.host import hostname_desde_request
 
 router = APIRouter(prefix="/auth", tags=["Autenticaci?n"])
 
 # Router aparte para la gesti?n de usuarios: el front la consume en /usuarios.
-router_usuarios = APIRouter(prefix="/usuarios", tags=["Usuarios"])
+router_usuarios = APIRouter(
+    prefix="/usuarios",
+    tags=["Usuarios"],
+    dependencies=[Depends(exigir_usuario_del_comercio)],
+)
 
 # Los vendedores son usuarios, pero el front los gestiona desde la pantalla
 # de cat?logos (POST/DELETE /catalogos/vendedores). La ruta vive ac? porque
 # la entidad pertenece a auth; cat?logos nunca toca usuarios.
-router_vendedores = APIRouter(prefix="/catalogos/vendedores", tags=["Usuarios"])
+router_vendedores = APIRouter(
+    prefix="/catalogos/vendedores",
+    tags=["Usuarios"],
+    dependencies=[Depends(exigir_usuario_del_comercio)],
+)
 
 # Alias para inyectar la sesi?n de base de datos en cada endpoint.
 Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
@@ -57,21 +67,27 @@ def _borrar_cookie_acceso(response: Response) -> None:
 
 @router.post("/login", response_model=LoginResponse, operation_id="login")
 async def login(
-    datos: LoginRequest, sesion: Sesion, response: Response
+    datos: LoginRequest,
+    sesion: Sesion,
+    response: Response,
+    request: Request,
 ) -> LoginResponse:
-    """Inicia sesi?n: JWT en cookie httpOnly (+ body para clientes API/MCP)."""
-    resultado = await AuthService(sesion).login(datos)
+    """Inicia sesión: JWT en cookie httpOnly (+ body para clientes API/MCP)."""
+    host = hostname_desde_request(request)
+    resultado = await AuthService(sesion).login(datos, host=host)
     _setear_cookie_acceso(response, resultado.access_token)
     return resultado
 
 
 @router.get("/me", response_model=UsuarioResponse, operation_id="obtener_perfil")
 async def perfil(
+    request: Request,
     usuario: Annotated[UsuarioActual, Depends(obtener_usuario_actual)],
     sesion: Sesion,
 ) -> UsuarioResponse:
-    """Devuelve el perfil del usuario autenticado (seg?n el token)."""
-    return await AuthService(sesion).obtener_usuario(usuario.id)
+    """Devuelve el perfil del usuario autenticado (según el token y el Host)."""
+    host = hostname_desde_request(request)
+    return await AuthService(sesion).obtener_perfil(usuario.id, host=host)
 
 
 @router.post("/logout", status_code=204, operation_id="logout")
@@ -84,7 +100,7 @@ async def logout(response: Response) -> None:
 @router_usuarios.get(
     "",
     response_model=list[UsuarioResponse],
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("configuracion"))],
     operation_id="listar_usuarios",
 )
 async def listar_usuarios(sesion: Sesion) -> list[UsuarioResponse]:
@@ -96,18 +112,18 @@ async def listar_usuarios(sesion: Sesion) -> list[UsuarioResponse]:
     "",
     response_model=UsuarioResponse,
     status_code=201,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("configuracion"))],
     operation_id="crear_usuario",
 )
 async def crear_usuario(datos: CrearUsuarioRequest, sesion: Sesion) -> UsuarioResponse:
-    """Da de alta un usuario (administrador o vendedor). Solo administradores."""
+    """Da de alta un usuario (administrador, encargado o vendedor). Requiere Configuración."""
     return await AuthService(sesion).crear_usuario(datos)
 
 
 @router_usuarios.delete(
     "/{usuario_id}",
     status_code=204,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("configuracion"))],
     operation_id="eliminar_usuario",
 )
 async def eliminar_usuario(
@@ -122,6 +138,13 @@ async def eliminar_usuario(
 @router_vendedores.get(
     "",
     response_model=list[UsuarioResponse],
+    dependencies=[
+        Depends(
+            requerir_modulo(
+                "configuracion", "clientes", "mostrador", "cta_cte", "ventas"
+            )
+        )
+    ],
     operation_id="listar_vendedores",
 )
 async def listar_vendedores(sesion: Sesion) -> list[UsuarioResponse]:
@@ -133,7 +156,7 @@ async def listar_vendedores(sesion: Sesion) -> list[UsuarioResponse]:
     "",
     response_model=UsuarioResponse,
     status_code=201,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("configuracion"))],
     operation_id="crear_vendedor",
 )
 async def crear_vendedor(datos: CrearVendedorRequest, sesion: Sesion) -> UsuarioResponse:
@@ -144,7 +167,7 @@ async def crear_vendedor(datos: CrearVendedorRequest, sesion: Sesion) -> Usuario
 @router_vendedores.delete(
     "/{usuario_id}",
     status_code=204,
-    dependencies=[Depends(requerir_rol("administrador"))],
+    dependencies=[Depends(requerir_modulo("configuracion"))],
     operation_id="eliminar_vendedor",
 )
 async def eliminar_vendedor(
