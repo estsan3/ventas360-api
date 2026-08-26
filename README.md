@@ -39,6 +39,8 @@ Reglas clave: commit solo en service, IDs débiles entre módulos, tablas con pr
 
 Ver `AGENTS.md` para la guía completa de convenciones.
 
+Diagramas de secuencia (un flujo principal por módulo, más auth/tenant transversal y la cadena remito → recibo): [docs/diagramas/](docs/diagramas/README.md).
+
 ## Análisis WinSales → módulos
 
 Documentación derivada de `WINSALES.mdb` (inventario de módulos y priorización):
