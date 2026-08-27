@@ -258,3 +258,61 @@ async def test_entregar_y_emitir_cheque_propio(cliente, auth_headers) -> None:
     assert entrega.status_code == 200, entrega.text
     assert entrega.json()["estado"] == "entregado"
     assert entrega.json()["entregado_a"] == "Flete Norte"
+
+
+@pytest.mark.asyncio
+async def test_cobro_mixto_efectivo_y_cheque(cliente, auth_headers) -> None:
+    ids = await _setup_deuda(cliente, auth_headers)
+    total = float(ids["total"])
+    fecha = _fecha()
+    await _abrir(cliente, auth_headers, fecha, 500)
+    efectivo = 100.0
+    cheque = round(total - efectivo, 2)
+
+    recibo = await cliente.post(
+        "/api/v1/cobranzas/recibos",
+        headers=auth_headers,
+        json={
+            "cliente_id": ids["cliente_id"],
+            "monto": total,
+            "fecha": fecha,
+            "imputaciones": [{"factura_id": ids["factura_id"], "monto": total}],
+            "medios": [
+                {"medio": "efectivo", "monto": efectivo},
+                {
+                    "medio": "cheque",
+                    "monto": cheque,
+                    "cheque": {
+                        "numero": "MIX-77",
+                        "banco_emisor": "Nación",
+                        "librador": ids["nombre"],
+                        "recibido_de": ids["nombre"],
+                    },
+                },
+            ],
+        },
+    )
+    assert recibo.status_code == 201, recibo.text
+    assert recibo.json()["medio"] == "mixto"
+    assert recibo.json()["monto"] == total
+
+    valores = await cliente.get("/api/v1/bancos/valores", headers=auth_headers)
+    cartera = [v for v in valores.json() if v["numero"] == "MIX-77"]
+    assert len(cartera) == 1
+    assert cartera[0]["monto"] == cheque
+
+    saldo = await cliente.get(
+        "/api/v1/caja/saldo",
+        headers=auth_headers,
+        params={"fecha": fecha},
+    )
+    assert saldo.status_code == 200
+    body = saldo.json()
+    assert body["efectivo_esperado"] == 600
+    assert body["cheques_esperado"] == cheque
+
+    cxc = await cliente.get(
+        f"/api/v1/cxc/clientes/{ids['cliente_id']}/saldo",
+        headers=auth_headers,
+    )
+    assert cxc.json()["saldo"] == 0.0

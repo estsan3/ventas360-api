@@ -144,6 +144,7 @@ async def _sembrar_en_tenant(sesion) -> None:
     from scripts.seed_casuistica import (
     asegurar_casuistica_mostrador,
     asegurar_casuistica_rica,
+    asegurar_cliente_muchas_deudas,
     asegurar_cxc_remitos_emitidos,
     )
 
@@ -164,6 +165,9 @@ async def _sembrar_en_tenant(sesion) -> None:
         n_cxc = await asegurar_cxc_remitos_emitidos(sesion)
         if n_cxc:
             print(f"CxC alineada con remitos emitidos ({n_cxc} movimientos).")
+        n_deudas = await asegurar_cliente_muchas_deudas(sesion)
+        if n_deudas:
+            print(f"Cliente con muchas deudas: Constructora Delta SRL ({n_deudas} comprobantes).")
         return
 
     password_hash = hashear_password(PASSWORD_DEMO)
@@ -445,6 +449,7 @@ async def _sembrar_en_tenant(sesion) -> None:
     await asegurar_casuistica_rica(sesion)
     await asegurar_casuistica_mostrador(sesion)
     await asegurar_cxc_remitos_emitidos(sesion)
+    await asegurar_cliente_muchas_deudas(sesion)
 
 
 if __name__ == "__main__":

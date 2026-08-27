@@ -9,7 +9,7 @@ from app.core.excepciones import RecursoNoEncontrado, ReglaDeNegocioViolada
 from app.modulos.bancos.contrato import BancosLocal, ContratoBancos
 from app.modulos.caja.contrato import CajaLocal, ContratoCaja
 from app.modulos.clientes.contrato import ClientesLocal, ContratoClientes
-from app.modulos.cobranzas.bo import CobranzasBO
+from app.modulos.cobranzas.bo import CobranzasBO, LineaMedio
 from app.modulos.cobranzas.dao import CobranzasDAO
 from app.modulos.cobranzas.models import ImputacionRecibo, Recibo
 from app.modulos.cobranzas.schemas import CrearReciboRequest, ReciboResponse
@@ -47,8 +47,16 @@ class CobranzasService:
         return ReciboResponse.model_validate(recibo)
 
     async def crear(self, datos: CrearReciboRequest) -> ReciboResponse:
-        self._bo.validar_medio(datos.medio)
-        self._bo.validar_cheque(datos.medio, datos.cheque is not None)
+        lineas_req = None
+        if datos.medios:
+            lineas_req = [
+                LineaMedio(medio=m.medio, monto=round(m.monto, 2), cheque=m.cheque)
+                for m in datos.medios
+            ]
+        lineas = self._bo.normalizar_medios(
+            datos.monto, datos.medio, datos.cheque, lineas_req
+        )
+        medio = self._bo.validar_medios(datos.monto, lineas)
         self._bo.validar_recibo(
             datos.monto, [i.monto for i in datos.imputaciones]
         )
@@ -75,7 +83,7 @@ class CobranzasService:
             cliente_id=datos.cliente_id,
             fecha=fecha,
             monto=round(datos.monto, 2),
-            medio=datos.medio,
+            medio=medio,
             observacion=datos.observacion,
             imputaciones=[
                 ImputacionRecibo(
@@ -97,8 +105,7 @@ class CobranzasService:
             fecha=fecha,
         )
 
-        # Tesorería: efectivo/tarjeta/cheque → caja; transferencia → banco.
-        await self._impactar_tesoreria(recibo, datos)
+        await self._impactar_tesoreria(recibo, lineas)
 
         await self._sesion.commit()
         await self._sesion.refresh(recibo, attribute_names=["imputaciones"])
@@ -115,48 +122,53 @@ class CobranzasService:
         return ReciboResponse.model_validate(recibo)
 
     async def _impactar_tesoreria(
-        self, recibo: Recibo, datos: CrearReciboRequest
+        self, recibo: Recibo, lineas: list[LineaMedio]
     ) -> None:
-        concepto = f"Cobranza recibo {recibo.id[:8]}"
-        if recibo.medio == "transferencia":
-            await self._bancos.acreditar(
-                monto=recibo.monto,
-                concepto=concepto,
-                referencia_tipo="recibo",
-                referencia_id=recibo.id,
-                fecha=recibo.fecha,
-            )
-            return
-        if recibo.medio == "cheque":
-            assert datos.cheque is not None
-            ch = datos.cheque
-            await self._bancos.recibir_cheque(
-                monto=recibo.monto,
-                numero=ch.numero,
-                banco_emisor=ch.banco_emisor,
-                librador=ch.librador,
-                fecha=ch.fecha or recibo.fecha,
-                fecha_vto=ch.fecha_vto,
-                recibido_de=ch.recibido_de or ch.librador,
-                origen="recibo",
-                origen_id=recibo.id,
-                observacion=recibo.observacion,
-            )
+        n = len(lineas)
+        for i, linea in enumerate(lineas):
+            ref_id = recibo.id if n == 1 else f"{recibo.id}:{i}"
+            concepto = f"Cobranza recibo {recibo.id[:8]}"
+            if n > 1:
+                concepto = f"{concepto} · {linea.medio}"
+            if linea.medio == "transferencia":
+                await self._bancos.acreditar(
+                    monto=linea.monto,
+                    concepto=concepto,
+                    referencia_tipo="recibo",
+                    referencia_id=ref_id,
+                    fecha=recibo.fecha,
+                )
+                continue
+            if linea.medio == "cheque":
+                assert linea.cheque is not None
+                ch = linea.cheque
+                await self._bancos.recibir_cheque(
+                    monto=linea.monto,
+                    numero=ch.numero,
+                    banco_emisor=ch.banco_emisor,
+                    librador=ch.librador,
+                    fecha=ch.fecha or recibo.fecha,
+                    fecha_vto=ch.fecha_vto,
+                    recibido_de=ch.recibido_de or ch.librador,
+                    origen="recibo",
+                    origen_id=recibo.id,
+                    observacion=recibo.observacion,
+                )
+                await self._caja.registrar_ingreso(
+                    monto=linea.monto,
+                    medio="cheque",
+                    concepto=concepto,
+                    referencia_tipo="recibo",
+                    referencia_id=ref_id,
+                    fecha=recibo.fecha,
+                )
+                continue
+            medio_caja = "tarjeta" if linea.medio == "tarjeta" else "efectivo"
             await self._caja.registrar_ingreso(
-                monto=recibo.monto,
-                medio="cheque",
+                monto=linea.monto,
+                medio=medio_caja,
                 concepto=concepto,
                 referencia_tipo="recibo",
-                referencia_id=recibo.id,
+                referencia_id=ref_id,
                 fecha=recibo.fecha,
             )
-            return
-        medio_caja = "tarjeta" if recibo.medio == "tarjeta" else "efectivo"
-        await self._caja.registrar_ingreso(
-            monto=recibo.monto,
-            medio=medio_caja,
-            concepto=concepto,
-            referencia_tipo="recibo",
-            referencia_id=recibo.id,
-            fecha=recibo.fecha,
-        )

@@ -1471,3 +1471,40 @@ async def asegurar_cxc_remitos_emitidos(sesion: AsyncSession) -> int:
     if tocados:
         await sesion.commit()
     return tocados
+
+
+async def asegurar_cliente_muchas_deudas(sesion: AsyncSession) -> int:
+    """Deja a Constructora Delta SRL con varios comprobantes pendientes de cobro."""
+    cliente = await sesion.get(Cliente, "cli-delta")
+    if cliente is None:
+        return 0
+    if await sesion.get(MovimientoCxc, "cxc-delta-d-01") is not None:
+        return 0
+
+    deudas: list[tuple[str, str, str, float, int]] = [
+        ("cxc-delta-d-01", "FAC A 0003-00014601", "factura", 428_500.0, 118),
+        ("cxc-delta-d-02", "FAC A 0003-00014622", "factura", 187_400.0, 96),
+        ("cxc-delta-d-03", "REM 0002-00014640", "remito", 96_800.0, 74),
+        ("cxc-delta-d-04", "FAC A 0003-00014658", "factura", 254_900.0, 51),
+        ("cxc-delta-d-05", "REM 0002-00014671", "remito", 63_250.0, 38),
+        ("cxc-delta-d-06", "FAC B 0003-00014690", "factura", 142_780.0, 27),
+        ("cxc-delta-d-07", "FAC A 0003-00014705", "factura", 89_400.0, 16),
+        ("cxc-delta-d-08", "REM 0002-00014718", "remito", 175_330.0, 9),
+        ("cxc-delta-d-09", "FAC A 0003-00014731", "factura", 52_100.0, 4),
+        ("cxc-delta-d-10", "FAC A 0003-00014744", "factura", 310_650.0, 1),
+    ]
+    for mov_id, concepto, ref_tipo, monto, dias in deudas:
+        sesion.add(
+            MovimientoCxc(
+                id=mov_id,
+                cliente_id="cli-delta",
+                tipo="debe",
+                monto=monto,
+                referencia_tipo=ref_tipo,
+                referencia_id=mov_id,
+                concepto=concepto,
+                fecha=HOY - timedelta(days=dias),
+            )
+        )
+    await sesion.commit()
+    return len(deudas)
