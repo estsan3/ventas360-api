@@ -57,6 +57,7 @@ Seguí SIEMPRE estas reglas. Si una solicitud las viola, proponé el diseño cor
 4. Exponer `contrato.py` si otros módulos lo necesitan.
 5. Si publica/escucha eventos, agregar `eventos.py` y registrar suscripciones en `main.py`.
 6. Tests: `tests/test_bo_<nombre>.py` + integración API.
+7. Diagrama de secuencia del flujo principal en `docs/diagramas/<nombre>.md` y fila en `docs/diagramas/README.md`.
 
 ## Buenas prácticas de implementación
 
