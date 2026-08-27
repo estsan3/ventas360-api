@@ -41,6 +41,10 @@ class ContratoProductos(Protocol):
 
     async def obtener_por_sku(self, sku: str) -> ProductoResumen | None: ...
 
+    async def obtener_por_codigo_barras(self, codigo: str) -> ProductoResumen | None: ...
+
+    async def buscar_por_texto(self, q: str, *, limite: int = 50) -> list[ProductoResumen]: ...
+
     async def listar_activos(self) -> list[ProductoResumen]: ...
 
     async def establecer_stock(self, producto_id: str, stock: int) -> None: ...
@@ -89,6 +93,14 @@ class ProductosLocal:
     async def obtener_por_sku(self, sku: str) -> ProductoResumen | None:
         producto = await self._dao.buscar_por_sku(sku.strip())
         return self._a_resumen(producto) if producto else None
+
+    async def obtener_por_codigo_barras(self, codigo: str) -> ProductoResumen | None:
+        producto = await self._dao.buscar_por_codigo_barras(codigo)
+        return self._a_resumen(producto) if producto else None
+
+    async def buscar_por_texto(self, q: str, *, limite: int = 50) -> list[ProductoResumen]:
+        items, _ = await self._dao.listar(q=q, activo=True, page=1, page_size=limite)
+        return [self._a_resumen(p) for p in items]
 
     async def listar_activos(self) -> list[ProductoResumen]:
         return [self._a_resumen(p) for p in await self._dao.listar_activos()]

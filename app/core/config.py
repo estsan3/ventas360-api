@@ -45,6 +45,14 @@ class Configuracion(BaseSettings):
     # Exponer la API como servidor MCP para agentes de IA.
     mcp_habilitado: bool = False
 
+    # Parseo de remitos con visión (Claude Haiku).
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-haiku-4-5-20251001"
+    anthropic_max_tokens: int = 4096
+    # auto = Anthropic si hay API key; mock = datos demo; anthropic = forzar API.
+    remito_parse_modo: str = "auto"
+    remito_parse_max_mb: int = 5
+
     @property
     def cors_origins_lista(self) -> list[str]:
         """Devuelve los orígenes CORS como lista limpia."""

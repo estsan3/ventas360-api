@@ -56,6 +56,19 @@ class ProductoDAO:
         )
         return resultado.scalar_one_or_none()
 
+    async def buscar_por_codigo_barras(self, codigo: str) -> Producto | None:
+        codigo_l = codigo.strip()
+        if not codigo_l:
+            return None
+        resultado = await self._sesion.execute(
+            select(Producto).where(
+                del_tenant(Producto),
+                Producto.codigo_barras == codigo_l,
+                Producto.activo.is_(True),
+            )
+        )
+        return resultado.scalar_one_or_none()
+
     async def guardar(self, producto: Producto) -> Producto:
         self._sesion.add(producto)
         await self._sesion.flush()

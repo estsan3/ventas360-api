@@ -27,6 +27,8 @@ asyncpg = "^0.30"
 openpyxl = "^3.1"
 # Requerido por FastAPI para UploadFile / Form multipart.
 python-multipart = "^0.0.20"
+# Visión: parseo de remitos con Claude Haiku.
+anthropic = "^0.49"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3"
