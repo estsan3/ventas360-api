@@ -26,6 +26,7 @@ from app.modulos.cobranzas.router import router as cobranzas_router
 from app.modulos.compras.router import router as compras_router
 from app.modulos.cxc.router import router as cxc_router
 from app.modulos.cxp.router import router as cxp_router
+from app.modulos.ia.router import router as ia_router
 from app.modulos.parametros.router import router as parametros_router
 from app.modulos.precios.router import router as precios_router
 from app.modulos.productos.router import router as productos_router
@@ -108,6 +109,7 @@ def crear_aplicacion() -> FastAPI:
     app.include_router(bancos_router, prefix=prefijo)
     app.include_router(parametros_router, prefix=prefijo)
     app.include_router(reporteria_router, prefix=prefijo)
+    app.include_router(ia_router, prefix=prefijo)
 
     @app.get("/health", tags=["Infraestructura"], operation_id="health")
     async def health() -> dict[str, str]:

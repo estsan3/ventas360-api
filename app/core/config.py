@@ -45,6 +45,19 @@ class Configuracion(BaseSettings):
     # Exponer la API como servidor MCP para agentes de IA.
     mcp_habilitado: bool = False
 
+    # Parseo de remitos con visión (Claude Haiku).
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-haiku-4-5-20251001"
+    anthropic_max_tokens: int = 4096
+    # auto = Anthropic si hay API key; mock = datos demo; anthropic = forzar API.
+    remito_parse_modo: str = "auto"
+    remito_parse_max_mb: int = 5
+
+    # IA transversal (mostrador, acciones, resumen).
+    ai_habilitada: bool = True
+    # Secreto para webhook n8n (GET /ai/webhook/resumen-dia).
+    n8n_webhook_secret: str = ""
+
     @property
     def cors_origins_lista(self) -> list[str]:
         """Devuelve los orígenes CORS como lista limpia."""

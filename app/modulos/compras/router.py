@@ -2,11 +2,15 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Form, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
-from app.modulos.compras.schemas import CompraResponse, CrearCompraRequest
+from app.modulos.compras.schemas import (
+    CompraResponse,
+    CrearCompraRequest,
+    ParsearRemitoResponse,
+)
 from app.modulos.compras.service import ComprasService
 from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
 
@@ -28,6 +32,27 @@ async def listar_compras(
     tipo: str | None = Query(default=None),
 ) -> list[CompraResponse]:
     return await ComprasService(sesion).listar(tipo=tipo)
+
+
+@router.post(
+    "/remitos/parsear",
+    response_model=ParsearRemitoResponse,
+    operation_id="parsear_remito_foto",
+)
+async def parsear_remito_foto(
+    sesion: Sesion,
+    archivo: UploadFile = File(..., description="Foto del remito (JPEG, PNG o WebP)"),
+    proveedor_id: str | None = Form(default=None),
+    deposito_id: str | None = Form(default=None),
+) -> ParsearRemitoResponse:
+    contenido = await archivo.read()
+    return await ComprasService(sesion).parsear_remito_foto(
+        contenido=contenido,
+        nombre_archivo=archivo.filename,
+        content_type=archivo.content_type,
+        proveedor_id=proveedor_id,
+        deposito_id=deposito_id,
+    )
 
 
 @router.get("/{compra_id}", response_model=CompraResponse, operation_id="obtener_compra")
