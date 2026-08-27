@@ -53,6 +53,11 @@ class Configuracion(BaseSettings):
     remito_parse_modo: str = "auto"
     remito_parse_max_mb: int = 5
 
+    # IA transversal (mostrador, acciones, resumen).
+    ai_habilitada: bool = True
+    # Secreto para webhook n8n (GET /ai/webhook/resumen-dia).
+    n8n_webhook_secret: str = ""
+
     @property
     def cors_origins_lista(self) -> list[str]:
         """Devuelve los orígenes CORS como lista limpia."""
