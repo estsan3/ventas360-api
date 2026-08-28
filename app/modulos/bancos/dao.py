@@ -1,6 +1,6 @@
 """DAO del módulo bancos."""
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.tenant_ctx import del_tenant, es_del_tenant
@@ -113,7 +113,10 @@ class BancosDAO:
         return float(creditos), float(debitos)
 
     async def listar_valores(
-        self, estado: str | None = None
+        self,
+        estado: str | None = None,
+        tipo: str | None = None,
+        q: str | None = None,
     ) -> list[ValorBancario]:
         consulta = (
             select(ValorBancario)
@@ -122,6 +125,20 @@ class BancosDAO:
         )
         if estado:
             consulta = consulta.where(ValorBancario.estado == estado)
+        if tipo:
+            consulta = consulta.where(ValorBancario.tipo == tipo)
+        termino = (q or "").strip()
+        if termino:
+            like = f"%{termino}%"
+            consulta = consulta.where(
+                or_(
+                    ValorBancario.numero.ilike(like),
+                    ValorBancario.librador.ilike(like),
+                    ValorBancario.banco_emisor.ilike(like),
+                    ValorBancario.recibido_de.ilike(like),
+                    ValorBancario.entregado_a.ilike(like),
+                )
+            )
         return list((await self._sesion.execute(consulta)).scalars())
 
     async def buscar_valor(self, valor_id: str) -> ValorBancario | None:

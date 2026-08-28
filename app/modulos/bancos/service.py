@@ -60,9 +60,12 @@ class BancosService:
         return [MovimientoBancarioResponse.model_validate(m) for m in items]
 
     async def listar_valores(
-        self, estado: str | None = None
+        self,
+        estado: str | None = None,
+        tipo: str | None = None,
+        q: str | None = None,
     ) -> list[ValorBancarioResponse]:
-        items = await self._dao.listar_valores(estado=estado)
+        items = await self._dao.listar_valores(estado=estado, tipo=tipo, q=q)
         return [ValorBancarioResponse.model_validate(v) for v in items]
 
     async def crear_valor(self, datos: CrearValorRequest) -> ValorBancarioResponse:

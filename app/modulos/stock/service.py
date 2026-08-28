@@ -121,6 +121,9 @@ class StockService:
                     cantidad=cantidad,
                     costo=art.costo,
                     precio=art.precio,
+                    marca=art.marca,
+                    rubro=art.rubro,
+                    codigo_barras=art.codigo_barras,
                 )
             )
         if migrado:

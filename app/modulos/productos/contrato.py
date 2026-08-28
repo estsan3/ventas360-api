@@ -22,6 +22,9 @@ class ProductoResumen:
     costo: float
     stock: int
     activo: bool
+    marca: str = ""
+    rubro: str = ""
+    codigo_barras: str = ""
 
 
 class ContratoProductos(Protocol):
@@ -171,4 +174,7 @@ class ProductosLocal:
             costo=producto.costo,
             stock=producto.stock,
             activo=producto.activo,
+            marca=producto.marca,
+            rubro=producto.rubro,
+            codigo_barras=producto.codigo_barras,
         )

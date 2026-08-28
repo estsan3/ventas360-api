@@ -42,6 +42,9 @@ class InventarioItemResponse(BaseModel):
     cantidad: int
     costo: float
     precio: float
+    marca: str = ""
+    rubro: str = ""
+    codigo_barras: str = ""
 
 
 class AjusteStockRequest(BaseModel):

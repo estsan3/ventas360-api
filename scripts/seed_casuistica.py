@@ -1075,51 +1075,6 @@ async def asegurar_casuistica_rica(sesion: AsyncSession) -> bool:
                 referencia_tipo="cobro",
                 referencia_id="cxc-2",
             ),
-            ValorBancario(
-                id="chq-1",
-                tipo="cheque_tercero",
-                estado="en_cartera",
-                monto=187400.0,
-                fecha=HOY - timedelta(days=5),
-                fecha_vto=HOY + timedelta(days=7),
-                numero="00012345",
-                librador="Corralón Mitre SA",
-                banco_emisor="Banco Galicia",
-            ),
-            ValorBancario(
-                id="chq-2",
-                tipo="cheque_tercero",
-                estado="en_cartera",
-                monto=96800.0,
-                fecha=HOY - timedelta(days=2),
-                fecha_vto=HOY + timedelta(days=14),
-                numero="00099881",
-                librador="Agropecuaria El Ceibo",
-                banco_emisor="Banco Nación",
-            ),
-            ValorBancario(
-                id="chq-3",
-                tipo="cheque_tercero",
-                estado="depositado",
-                monto=45000.0,
-                fecha=HOY - timedelta(days=10),
-                fecha_vto=HOY - timedelta(days=1),
-                numero="00055441",
-                librador="Metalúrgica Pampa SRL",
-                banco_emisor="Santander",
-                cuenta_destino_id="bco-1",
-            ),
-            ValorBancario(
-                id="chq-4",
-                tipo="cheque_propio",
-                estado="en_cartera",
-                monto=80000.0,
-                fecha=HOY,
-                fecha_vto=HOY + timedelta(days=30),
-                numero="P-00012",
-                librador="Ventas360 Demo",
-                banco_emisor="Banco Demo",
-            ),
         ]
     )
 
@@ -1132,6 +1087,240 @@ async def asegurar_casuistica_rica(sesion: AsyncSession) -> bool:
 
     await sesion.commit()
     return True
+
+
+async def asegurar_cartera_cheques(sesion: AsyncSession) -> int:
+    """Cheques de demo (terceros y propios) alineados a la maqueta de cartera.
+
+    Idempotente por id. `d` = días desde hoy hasta la fecha de pago.
+    """
+    terceros = [
+        {
+            "id": "chq-t1",
+            "numero": "00471299",
+            "banco": "Banco de la Nación Argentina",
+            "librador": "Distribuidora San Martín SRL",
+            "recibido_de": "Distribuidora San Martín SRL",
+            "origen_id": "REC X-0001-00004266",
+            "d": 24,
+            "monto": 180000.0,
+            "estado": "en_cartera",
+        },
+        {
+            "id": "chq-t2",
+            "numero": "00983114",
+            "banco": "Banco Galicia",
+            "librador": "Supermercado Norte SRL",
+            "recibido_de": "Supermercado Norte SRL",
+            "origen_id": "REC X-0001-00004255",
+            "d": 0,
+            "monto": 640000.0,
+            "estado": "en_cartera",
+        },
+        {
+            "id": "chq-t3",
+            "numero": "01120544",
+            "banco": "Banco Credicoop",
+            "librador": "Agropecuaria El Trébol SA",
+            "recibido_de": "Ferretería El Torno SA",
+            "origen_id": "REC X-0001-00004201",
+            "d": 2,
+            "monto": 415000.0,
+            "estado": "entregado",
+            "entregado_a": "Insumos del Sur SRL",
+            "obs": "OP-0001-00002198",
+        },
+        {
+            "id": "chq-t4",
+            "numero": "00762018",
+            "banco": "Banco de la Provincia de Buenos Aires",
+            "librador": "Hotel Plaza Alvear SRL",
+            "recibido_de": "Hotel Plaza Alvear SRL",
+            "origen_id": "REC X-0001-00004188",
+            "d": -3,
+            "monto": 268400.0,
+            "estado": "depositado",
+            "entregado_a": "Caja de ahorro principal",
+            "cuenta": "bco-1",
+        },
+        {
+            "id": "chq-t5",
+            "numero": "00554907",
+            "banco": "Banco Macro",
+            "librador": "Corralón Los Álamos",
+            "recibido_de": "Corralón Los Álamos",
+            "origen_id": "REC X-0001-00004102",
+            "d": -9,
+            "monto": 322500.0,
+            "estado": "rechazado",
+            "obs": "Sin fondos suficientes",
+        },
+        {
+            "id": "chq-t6",
+            "numero": "00318877",
+            "banco": "Banco de la Nación Argentina",
+            "librador": "Almacén Doña Rosa",
+            "recibido_de": "Almacén Doña Rosa",
+            "origen_id": "REC X-0001-00004270",
+            "d": 6,
+            "monto": 96800.0,
+            "estado": "en_cartera",
+        },
+        {
+            "id": "chq-t7",
+            "numero": "00845102",
+            "banco": "Banco Galicia",
+            "librador": "Transporte Bermúdez SRL",
+            "recibido_de": "Supermercado Norte SRL",
+            "origen_id": "REC X-0001-00004240",
+            "d": 11,
+            "monto": 754000.0,
+            "estado": "en_cartera",
+        },
+        {
+            "id": "chq-t8",
+            "numero": "00229461",
+            "banco": "Banco Credicoop",
+            "librador": "Kiosco 24hs Central",
+            "recibido_de": "Kiosco 24hs Central",
+            "origen_id": "REC X-0001-00004259",
+            "d": 3,
+            "monto": 58700.0,
+            "estado": "en_cartera",
+        },
+        {
+            "id": "chq-t9",
+            "numero": "00667320",
+            "banco": "Banco de la Provincia de Buenos Aires",
+            "librador": "Rotisería Mediterránea",
+            "recibido_de": "Rotisería Mediterránea",
+            "origen_id": "REC X-0001-00004244",
+            "d": -6,
+            "monto": 143900.0,
+            "estado": "cobrado",
+            "entregado_a": "Caja de ahorro principal",
+            "cuenta": "bco-1",
+        },
+        {
+            "id": "chq-t10",
+            "numero": "00990183",
+            "banco": "Banco Macro",
+            "librador": "Panadería La Espiga",
+            "recibido_de": "Panadería La Espiga",
+            "origen_id": "REC X-0001-00004268",
+            "d": 13,
+            "monto": 212300.0,
+            "estado": "en_cartera",
+        },
+    ]
+    propios = [
+        {
+            "id": "chq-p1",
+            "numero": "00012044",
+            "banco": "Banco de la Nación Argentina",
+            "d": 1,
+            "monto": 480000.0,
+            "estado": "en_cartera",
+            "entregado_a": "Insumos del Sur SRL",
+            "obs": "OP-0001-00002214",
+        },
+        {
+            "id": "chq-p2",
+            "numero": "00012045",
+            "banco": "Banco de la Nación Argentina",
+            "d": 8,
+            "monto": 315000.0,
+            "estado": "en_cartera",
+            "entregado_a": "Transporte Bermúdez SRL",
+            "obs": "OP-0001-00002219",
+        },
+        {
+            "id": "chq-p3",
+            "numero": "00012046",
+            "banco": "Banco de la Provincia de Buenos Aires",
+            "d": 4,
+            "monto": 862000.0,
+            "estado": "en_cartera",
+            "entregado_a": "Frigorífico Oeste SA",
+            "obs": "OP-0001-00002226",
+        },
+        {
+            "id": "chq-p4",
+            "numero": "00012041",
+            "banco": "Banco de la Nación Argentina",
+            "d": -5,
+            "monto": 240000.0,
+            "estado": "cobrado",
+            "entregado_a": "Papelera Central SRL",
+            "obs": "OP-0001-00002177",
+        },
+        {
+            "id": "chq-p5",
+            "numero": "00012042",
+            "banco": "Banco de la Provincia de Buenos Aires",
+            "d": 19,
+            "monto": 528000.0,
+            "estado": "en_cartera",
+            "entregado_a": "Insumos del Sur SRL",
+            "obs": "OP-0001-00002185",
+        },
+    ]
+
+    insertados = 0
+    for row in terceros:
+        if await sesion.get(ValorBancario, row["id"]) is not None:
+            continue
+        d = int(row["d"])
+        sesion.add(
+            ValorBancario(
+                id=row["id"],
+                tipo="cheque_tercero",
+                estado=row["estado"],
+                monto=row["monto"],
+                fecha=HOY - timedelta(days=max(3, 12 - max(d, 0))),
+                fecha_vto=HOY + timedelta(days=d),
+                numero=row["numero"],
+                librador=row["librador"],
+                banco_emisor=row["banco"],
+                recibido_de=row["recibido_de"],
+                entregado_a=row.get("entregado_a", ""),
+                fecha_entrega=HOY - timedelta(days=2) if row["estado"] != "en_cartera" else None,
+                origen="recibo",
+                origen_id=row.get("origen_id", ""),
+                cuenta_destino_id=row.get("cuenta"),
+                observacion=row.get("obs", ""),
+            )
+        )
+        insertados += 1
+
+    for row in propios:
+        if await sesion.get(ValorBancario, row["id"]) is not None:
+            continue
+        d = int(row["d"])
+        sesion.add(
+            ValorBancario(
+                id=row["id"],
+                tipo="cheque_propio",
+                estado=row["estado"],
+                monto=row["monto"],
+                fecha=HOY - timedelta(days=max(2, 8 - max(d, 0))),
+                fecha_vto=HOY + timedelta(days=d),
+                numero=row["numero"],
+                librador="Propio",
+                banco_emisor=row["banco"],
+                recibido_de="",
+                entregado_a=row.get("entregado_a", ""),
+                fecha_entrega=HOY - timedelta(days=1),
+                origen="op",
+                origen_id=row.get("obs", ""),
+                observacion=row.get("obs", ""),
+            )
+        )
+        insertados += 1
+
+    if insertados:
+        await sesion.commit()
+    return insertados
 
 
 # Nombres para el lote de mostrador (≥50 clientes).

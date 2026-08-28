@@ -71,8 +71,10 @@ async def listar_movimientos(
 async def listar_valores(
     sesion: Sesion,
     estado: str | None = Query(default=None),
+    tipo: str | None = Query(default=None),
+    q: str | None = Query(default=None),
 ) -> list[ValorBancarioResponse]:
-    return await BancosService(sesion).listar_valores(estado)
+    return await BancosService(sesion).listar_valores(estado, tipo, q)
 
 
 @router.post(

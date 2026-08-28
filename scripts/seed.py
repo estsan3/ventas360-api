@@ -142,6 +142,7 @@ async def sembrar_datos_demo() -> None:
 async def _sembrar_en_tenant(sesion) -> None:
     from app.modulos.tenants.service import TenantsService
     from scripts.seed_casuistica import (
+    asegurar_cartera_cheques,
     asegurar_casuistica_mostrador,
     asegurar_casuistica_rica,
     asegurar_cliente_muchas_deudas,
@@ -168,6 +169,9 @@ async def _sembrar_en_tenant(sesion) -> None:
         n_deudas = await asegurar_cliente_muchas_deudas(sesion)
         if n_deudas:
             print(f"Cliente con muchas deudas: Constructora Delta SRL ({n_deudas} comprobantes).")
+        n_chq = await asegurar_cartera_cheques(sesion)
+        if n_chq:
+            print(f"Cartera de cheques demo: {n_chq} valores.")
         return
 
     password_hash = hashear_password(PASSWORD_DEMO)
@@ -450,6 +454,7 @@ async def _sembrar_en_tenant(sesion) -> None:
     await asegurar_casuistica_mostrador(sesion)
     await asegurar_cxc_remitos_emitidos(sesion)
     await asegurar_cliente_muchas_deudas(sesion)
+    await asegurar_cartera_cheques(sesion)
 
 
 if __name__ == "__main__":
