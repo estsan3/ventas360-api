@@ -1,7 +1,7 @@
 # pagos — pago a proveedor
 
 Fuente: `app/modulos/pagos/` · Flujo principal: `POST /api/v1/pagos`.
-Actualizado: 2026-08-28.
+Actualizado: 2026-08-29.
 
 Espejo de cobranzas. Baja deuda (CxP haber) e impacta tesorería: efectivo → caja, transferencia → banco, cheque de cartera → `entregar_cheque`, cheque propio → `emitir_cheque_propio`.
 
