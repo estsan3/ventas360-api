@@ -30,6 +30,7 @@ Variables con prefijo `VENTAS360_` (ver `.env.example`):
 | `VENTAS360_DATABASE_URL` | SQLite local |
 | `VENTAS360_SEED_AL_INICIAR` | `true` |
 | `VENTAS360_MCP_HABILITADO` | `false` |
+| `VENTAS360_AFIP_PROVEEDOR` | `simulado` (`afip` = WSAA + WSFE real) |
 
 ## Arquitectura
 

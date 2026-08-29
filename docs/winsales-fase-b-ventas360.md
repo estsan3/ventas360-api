@@ -9,7 +9,7 @@ Fase A (A1–A9) cerrada. Esta fase amplía compras, tesorería y fiscal.
 | **B1** Proveedores + compras | Maestro, lista ≠ catálogo, pedido (OC), remito parcial, factura + CxP | Hecho (API + web) |
 | **B2** Caja / medios | Caja diaria, vínculo con cobranzas | Hecho (API + web) |
 | **B3** Bancos / valores | Cuentas bancarias, cheques/valores livianos | Hecho (API + web) |
-| **B4** AFIP real | Puerto WSAA/WSFE + adaptador (hoy solo placeholder CAE) | Pendiente |
+| **B4** AFIP real | Puerto WSAA/WSFE + adaptador (simulado por default; `afip` con cert) | Hecho (API + web) |
 | **B5** Fuerza de ventas / logística | Vendedores, zonas, hoja de ruta (solo si el negocio lo pide) | Pendiente |
 | **B6** ETL WinSales | Migración `.mdb` (proyecto aparte) | Pendiente |
 
@@ -40,8 +40,16 @@ Fase A (A1–A9) cerrada. Esta fase amplía compras, tesorería y fiscal.
 
 ## Fuera de Fase B (Fase C / descartable)
 
-Contabilidad operativa, pagos a proveedor, AFIP, taller completo, mensajería interna.
+Contabilidad operativa, taller completo, mensajería interna, NC/ND fiscales, alícuotas por producto.
+
+## B4 — ARCA / factura electrónica
+
+- [x] Identidad fiscal del emisor en parámetros (CUIT, condición IVA, PDV, domicilio).
+- [x] Puerto WSAA/WSFE + adaptadores `simulado` y `afip` (mismo patrón que Agro360 CPE).
+- [x] Al confirmar factura: letra A/B/C, CAE, vencimiento, número ARCA y QR.
+- [x] Si ARCA rechaza, la factura no pasa a confirmado.
+- [x] Web: Configuración → ARCA; mostrador muestra letra y CAE.
 
 ## Siguiente slice sugerido
 
-**B4 AFIP**: puerto WSAA/WSFE + adaptador; hoy solo campo `cae` placeholder en facturas.
+**B5** fuerza de ventas / logística (solo si el negocio lo pide).

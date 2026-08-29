@@ -326,6 +326,12 @@ async def _sembrar_en_tenant(sesion) -> None:
             Parametro(clave="sucursal_codigo", valor="CENTRAL"),
             Parametro(clave="sucursal_nombre", valor="Casa central"),
             Parametro(clave="condiciones_pago", valor="contado,30_dias,60_dias"),
+            Parametro(clave="afip_habilitada", valor="true"),
+            Parametro(clave="afip_cuit", valor="30712345682"),
+            Parametro(clave="afip_razon_social", valor="Comercio Demo S.A."),
+            Parametro(clave="afip_condicion_iva", valor="responsable_inscripto"),
+            Parametro(clave="afip_punto_venta", valor="1"),
+            Parametro(clave="afip_domicilio", valor="Av. Demo 100"),
             Talonario(
                 id="tal-pedido",
                 tipo_comprobante="pedido",

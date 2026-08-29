@@ -1,7 +1,10 @@
 """SERVICE del módulo parámetros."""
 
+from pathlib import Path
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import obtener_configuracion
 from app.core.excepciones import RecursoNoEncontrado, ReglaDeNegocioViolada
 from app.core.tenant_ctx import tenant_id_actual
 from app.modulos.parametros.bo import ParametrosBO
@@ -9,6 +12,8 @@ from app.modulos.parametros.dao import ParametrosDAO
 from app.modulos.parametros.models import Talonario
 from app.modulos.parametros.schemas import (
     NumeroAsignadoResponse,
+    ParametrosAfip,
+    ParametrosAfipResponse,
     ParametrosNegocio,
     ParametrosOperativos,
     PreferenciasNotificacion,
@@ -17,6 +22,7 @@ from app.modulos.parametros.schemas import (
 )
 
 _DEFAULTS_NEGOCIO = ParametrosNegocio(iva_porcentaje=21.0, moneda="ARS")
+_DEFAULTS_AFIP = ParametrosAfip()
 _DEFAULTS_OPERATIVOS = ParametrosOperativos()
 _DEFAULTS_PREFERENCIAS = PreferenciasNotificacion(
     stock_bajo=True, venta_confirmada=True, cliente_nuevo=True
@@ -50,6 +56,67 @@ class ParametrosService:
         )
         await self._sesion.commit()
         return datos
+
+    async def obtener_afip(self) -> ParametrosAfipResponse:
+        valores = await self._dao.obtener_todos(tenant_id_actual())
+        base = self._afip_desde_valores(valores)
+        cfg = obtener_configuracion()
+        proveedor = cfg.afip_proveedor.strip().lower()
+        if proveedor not in {"simulado", "afip"}:
+            proveedor = "simulado"
+        cert = Path(cfg.afip_certificado) if cfg.afip_certificado else None
+        clave = Path(cfg.afip_clave_privada) if cfg.afip_clave_privada else None
+        return ParametrosAfipResponse(
+            **base.model_dump(),
+            proveedor=proveedor,  # type: ignore[arg-type]
+            homologacion=cfg.afip_homologacion,
+            certificado_configurado=bool(
+                cert and clave and cert.is_file() and clave.is_file()
+            ),
+        )
+
+    async def guardar_afip(self, datos: ParametrosAfip) -> ParametrosAfipResponse:
+        cuit = self._bo.validar_afip(
+            habilitada=datos.habilitada,
+            cuit=datos.cuit,
+            condicion_iva=datos.condicion_iva,
+            punto_venta=datos.punto_venta,
+        )
+        await self._dao.guardar_varios(
+            tenant_id_actual(),
+            {
+                "afip_habilitada": str(datos.habilitada).lower(),
+                "afip_cuit": cuit,
+                "afip_razon_social": datos.razon_social.strip(),
+                "afip_condicion_iva": datos.condicion_iva,
+                "afip_punto_venta": str(datos.punto_venta),
+                "afip_domicilio": datos.domicilio.strip(),
+            },
+        )
+        await self._sesion.commit()
+        return await self.obtener_afip()
+
+    @staticmethod
+    def _afip_desde_valores(valores: dict[str, str]) -> ParametrosAfip:
+        condicion = valores.get("afip_condicion_iva", _DEFAULTS_AFIP.condicion_iva)
+        if condicion not in {
+            "responsable_inscripto",
+            "monotributo",
+            "exento",
+        }:
+            condicion = _DEFAULTS_AFIP.condicion_iva
+        try:
+            punto = int(valores.get("afip_punto_venta", str(_DEFAULTS_AFIP.punto_venta)))
+        except ValueError:
+            punto = _DEFAULTS_AFIP.punto_venta
+        return ParametrosAfip(
+            habilitada=valores.get("afip_habilitada", "false").lower() == "true",
+            cuit=valores.get("afip_cuit", ""),
+            razon_social=valores.get("afip_razon_social", ""),
+            condicion_iva=condicion,  # type: ignore[arg-type]
+            punto_venta=punto,
+            domicilio=valores.get("afip_domicilio", ""),
+        )
 
     async def obtener_operativos(self) -> ParametrosOperativos:
         valores = await self._dao.obtener_todos(tenant_id_actual())

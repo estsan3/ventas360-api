@@ -7,6 +7,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import obtener_sesion
 from app.modulos.parametros.schemas import (
+    ParametrosAfip,
+    ParametrosAfipResponse,
     ParametrosNegocio,
     ParametrosOperativos,
     PreferenciasNotificacion,
@@ -42,6 +44,26 @@ async def obtener_negocio(sesion: Sesion) -> ParametrosNegocio:
 )
 async def guardar_negocio(datos: ParametrosNegocio, sesion: Sesion) -> ParametrosNegocio:
     return await ParametrosService(sesion).guardar_negocio(datos)
+
+
+@router.get(
+    "/parametros/afip",
+    response_model=ParametrosAfipResponse,
+    dependencies=[Depends(requerir_modulo("mostrador", "ventas", "configuracion"))],
+    operation_id="obtener_parametros_afip",
+)
+async def obtener_afip(sesion: Sesion) -> ParametrosAfipResponse:
+    return await ParametrosService(sesion).obtener_afip()
+
+
+@router.put(
+    "/parametros/afip",
+    response_model=ParametrosAfipResponse,
+    dependencies=[Depends(requerir_modulo("configuracion"))],
+    operation_id="guardar_parametros_afip",
+)
+async def guardar_afip(datos: ParametrosAfip, sesion: Sesion) -> ParametrosAfipResponse:
+    return await ParametrosService(sesion).guardar_afip(datos)
 
 
 @router.get(

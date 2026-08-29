@@ -63,6 +63,19 @@ class VentasDAO:
         resultado = await self._sesion.execute(consulta)
         return list(resultado.scalars())
 
+    async def max_cbte_nro(self, punto_venta: int, cbte_tipo: int) -> int:
+        resultado = await self._sesion.execute(
+            select(func.max(Pedido.cbte_nro)).where(
+                del_tenant(Pedido),
+                Pedido.tipo == "factura",
+                Pedido.punto_venta == punto_venta,
+                Pedido.cbte_tipo == cbte_tipo,
+                Pedido.cae.is_not(None),
+            )
+        )
+        valor = resultado.scalar_one_or_none()
+        return int(valor or 0)
+
     async def buscar_por_id(self, pedido_id: str) -> Pedido | None:
         resultado = await self._sesion.execute(
             select(Pedido)

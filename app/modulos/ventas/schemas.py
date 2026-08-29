@@ -45,6 +45,14 @@ class PedidoResponse(BaseModel):
     iva_porcentaje: float
     total: float
     cae: str | None = None
+    cae_vencimiento: date | None = None
+    letra: str | None = None
+    cbte_tipo: int | None = None
+    punto_venta: int | None = None
+    cbte_nro: int | None = None
+    doc_tipo: int | None = None
+    doc_nro: str | None = None
+    qr_url: str | None = None
     numero: str | None = None
     fecha: date
     lineas: list[LineaPedidoResponse]
@@ -65,6 +73,7 @@ class CrearPedidoRequest(BaseModel):
     cliente_id: str
     tipo: TipoComprobante = "pedido"
     deposito_id: str | None = None
+    origen_id: str | None = None
     fecha: date | None = None
     lineas: list[CrearLineaPedidoRequest] = Field(min_length=1)
 

@@ -14,6 +14,14 @@ class ClienteResumen:
     nombre: str
 
 
+@dataclass(frozen=True)
+class ClienteFiscal:
+    id: str
+    nombre: str
+    cuit: str
+    condicion_iva: str
+
+
 class ContratoClientes(Protocol):
     """Interfaz que clientes garantiza al resto del sistema."""
 
@@ -22,6 +30,8 @@ class ContratoClientes(Protocol):
     async def nombres_por_ids(self, ids: list[str]) -> dict[str, str]: ...
 
     async def existe_cliente(self, cliente_id: str) -> bool: ...
+
+    async def obtener_fiscal(self, cliente_id: str) -> ClienteFiscal | None: ...
 
     async def buscar_por_texto(self, q: str, *, limite: int = 10) -> list[ClienteResumen]: ...
 
@@ -41,6 +51,17 @@ class ClientesLocal:
     async def existe_cliente(self, cliente_id: str) -> bool:
         cliente = await self._dao.buscar_por_id(cliente_id)
         return cliente is not None and cliente.activo
+
+    async def obtener_fiscal(self, cliente_id: str) -> ClienteFiscal | None:
+        cliente = await self._dao.buscar_por_id(cliente_id)
+        if cliente is None or not cliente.activo:
+            return None
+        return ClienteFiscal(
+            id=cliente.id,
+            nombre=cliente.nombre,
+            cuit=cliente.cuit,
+            condicion_iva=cliente.condicion_iva,
+        )
 
     async def buscar_por_texto(self, q: str, *, limite: int = 10) -> list[ClienteResumen]:
         items, _ = await self._dao.listar(q=q, activo=True, page=1, page_size=limite)

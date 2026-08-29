@@ -58,6 +58,12 @@ class Configuracion(BaseSettings):
     # Secreto para webhook n8n (GET /ai/webhook/resumen-dia).
     n8n_webhook_secret: str = ""
 
+    # Facturación ARCA/AFIP: `simulado` (default, sin red) o `afip` (WSAA + WSFE).
+    afip_proveedor: str = "simulado"
+    afip_certificado: str = ""
+    afip_clave_privada: str = ""
+    afip_homologacion: bool = True
+
     @property
     def cors_origins_lista(self) -> list[str]:
         """Devuelve los orígenes CORS como lista limpia."""

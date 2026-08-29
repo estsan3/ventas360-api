@@ -65,6 +65,7 @@ async def crear_tablas() -> None:
         await conexion.run_sync(_asegurar_columnas_compras)
         await conexion.run_sync(_asegurar_caja)
         await conexion.run_sync(_asegurar_bancos)
+        await conexion.run_sync(_asegurar_columnas_ventas)
 
 
 def _asegurar_columnas_productos(conexion) -> None:
@@ -215,3 +216,27 @@ def _asegurar_bancos(conexion) -> None:
         if nombre in existentes:
             continue
         conexion.execute(text(f"ALTER TABLE bancos_valor ADD COLUMN {nombre} {tipo}"))
+
+
+def _asegurar_columnas_ventas(conexion) -> None:
+    """Campos fiscales ARCA/WSFE en comprobantes existentes."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(conexion)
+    if "ventas_pedido" not in inspector.get_table_names():
+        return
+    existentes = {col["name"] for col in inspector.get_columns("ventas_pedido")}
+    extras: list[tuple[str, str]] = [
+        ("cae_vencimiento", "DATE"),
+        ("letra", "VARCHAR(1)"),
+        ("cbte_tipo", "INTEGER"),
+        ("punto_venta", "INTEGER"),
+        ("cbte_nro", "INTEGER"),
+        ("doc_tipo", "INTEGER"),
+        ("doc_nro", "VARCHAR(13)"),
+        ("qr_url", "VARCHAR(500)"),
+    ]
+    for nombre, tipo in extras:
+        if nombre in existentes:
+            continue
+        conexion.execute(text(f"ALTER TABLE ventas_pedido ADD COLUMN {nombre} {tipo}"))

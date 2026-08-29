@@ -12,9 +12,19 @@ from app.modulos.parametros.contrato import ContratoParametros, ParametrosLocal
 from app.modulos.precios.contrato import ContratoPrecios, PreciosLocal
 from app.modulos.productos.contrato import ContratoProductos, ProductosLocal
 from app.modulos.stock.contrato import ContratoStock, StockLocal
+from app.modulos.ventas.adaptadores import crear_proveedor_fe
 from app.modulos.ventas.bo import VentasBO
 from app.modulos.ventas.dao import VentasDAO
+from app.modulos.ventas.fiscal import (
+    IdentidadFiscal,
+    armar_identidad,
+    armar_qr,
+    formatear_numero_fiscal,
+    id_alicuota,
+    validar_emision_fiscal,
+)
 from app.modulos.ventas.models import LineaPedido, Pedido
+from app.modulos.ventas.puerto import ProveedorFE, SolicitudFE
 from app.modulos.ventas.schemas import (
     CambiarEstadoPedidoRequest,
     CrearPedidoRequest,
@@ -34,6 +44,7 @@ class VentasService:
         stock: ContratoStock | None = None,
         parametros: ContratoParametros | None = None,
         cxc: ContratoCxc | None = None,
+        proveedor_fe: ProveedorFE | None = None,
     ) -> None:
         self._sesion = sesion
         self._dao = VentasDAO(sesion)
@@ -44,6 +55,7 @@ class VentasService:
         self._stock = stock or StockLocal(sesion)
         self._parametros = parametros or ParametrosLocal(sesion)
         self._cxc = cxc or CxcLocal(sesion)
+        self._fe = proveedor_fe or crear_proveedor_fe()
 
     async def listar(
         self, tipo: str | None = None, cliente_id: str | None = None
@@ -67,8 +79,14 @@ class VentasService:
 
         negocio = await self._parametros.obtener_negocio()
         lineas, totales = await self._armar_lineas(datos)
+        identidad = (
+            await self._identidad_de_cliente(datos.cliente_id, negocio.iva_porcentaje)
+            if datos.tipo == "factura"
+            else None
+        )
+        iva_pct = identidad.iva_porcentaje if identidad else negocio.iva_porcentaje
 
-        neto, iva, total = self._bo.calcular_importes(totales, negocio.iva_porcentaje)
+        neto, iva, total = self._bo.calcular_importes(totales, iva_pct)
         numero: str | None = None
         try:
             numero = await self._parametros.asignar_numero(datos.tipo)
@@ -79,14 +97,16 @@ class VentasService:
             tipo=datos.tipo,
             cliente_id=datos.cliente_id,
             deposito_id=datos.deposito_id,
+            origen_id=datos.origen_id,
             fecha=datos.fecha or date.today(),
             neto=neto,
             iva=iva,
-            iva_porcentaje=negocio.iva_porcentaje,
+            iva_porcentaje=iva_pct,
             total=total,
             numero=numero,
             lineas=lineas,
         )
+        self._aplicar_identidad(pedido, identidad)
         await self._dao.guardar(pedido)
         await self._sesion.commit()
         await self._sesion.refresh(pedido, attribute_names=["lineas"])
@@ -113,6 +133,8 @@ class VentasService:
 
         self._bo.validar_transicion(pedido.tipo, pedido.estado, datos.estado)
         estado_anterior = pedido.estado
+        if pedido.tipo == "factura" and datos.estado == "confirmado":
+            await self._autorizar_factura(pedido)
         pedido.estado = datos.estado
         if pedido.tipo == "factura" and datos.estado == "confirmado":
             await self._imputar_factura_en_cxc(pedido)
@@ -187,20 +209,34 @@ class VentasService:
         except RecursoNoEncontrado:
             numero_factura = None
 
+        identidad = await self._identidad_de_cliente(
+            remito.cliente_id, remito.iva_porcentaje
+        )
+        iva_pct = identidad.iva_porcentaje if identidad else remito.iva_porcentaje
+        neto, iva, total = remito.neto, remito.iva, remito.total
+        if identidad and identidad.iva_porcentaje != remito.iva_porcentaje:
+            neto, iva, total = self._bo.calcular_importes(
+                [(ln.cantidad, ln.precio_unitario) for ln in remito.lineas],
+                iva_pct,
+            )
+
         factura = Pedido(
             tipo="factura",
             cliente_id=remito.cliente_id,
             deposito_id=remito.deposito_id,
             origen_id=remito.id,
             fecha=date.today(),
-            neto=remito.neto,
-            iva=remito.iva,
-            iva_porcentaje=remito.iva_porcentaje,
-            total=remito.total,
+            neto=neto,
+            iva=iva,
+            iva_porcentaje=iva_pct,
+            total=total,
             numero=numero_factura,
-            estado="confirmado",
+            estado="borrador",
             lineas=lineas,
         )
+        self._aplicar_identidad(factura, identidad)
+        await self._autorizar_factura(factura)
+        factura.estado = "confirmado"
         remito.estado = "facturado"
         await self._dao.guardar(factura)
         remito_ya_en_cxc = await self._cxc.existe_referencia("remito", remito.id)
@@ -238,6 +274,102 @@ class VentasService:
             referencia_id=comprobante.id,
             concepto=f"{etiqueta} {numero}",
             fecha=comprobante.fecha,
+        )
+
+    async def _identidad_de_cliente(
+        self, cliente_id: str, iva_porcentaje: float
+    ) -> IdentidadFiscal:
+        cliente = await self._clientes.obtener_fiscal(cliente_id)
+        if cliente is None:
+            raise ReglaDeNegocioViolada("Cliente inexistente o inactivo")
+        emisor = await self._parametros.obtener_afip()
+        return armar_identidad(
+            habilitada=emisor.habilitada,
+            cuit_emisor=emisor.cuit,
+            emisor_iva=emisor.condicion_iva,
+            punto_venta=emisor.punto_venta,
+            receptor_iva=cliente.condicion_iva,
+            cuit_receptor=cliente.cuit,
+            iva_porcentaje=iva_porcentaje,
+        )
+
+    @staticmethod
+    def _aplicar_identidad(pedido: Pedido, identidad: IdentidadFiscal | None) -> None:
+        if identidad is None:
+            return
+        pedido.letra = identidad.letra
+        pedido.cbte_tipo = identidad.cbte_tipo
+        pedido.punto_venta = identidad.punto_venta
+        pedido.doc_tipo = identidad.doc_tipo
+        pedido.doc_nro = identidad.doc_nro
+
+    async def _autorizar_factura(self, factura: Pedido) -> None:
+        """Pide CAE si ARCA está habilitada. No cambia el estado."""
+        if factura.cae:
+            return
+        emisor = await self._parametros.obtener_afip()
+        if not emisor.habilitada:
+            return
+        identidad = await self._identidad_de_cliente(
+            factura.cliente_id, factura.iva_porcentaje
+        )
+        self._aplicar_identidad(factura, identidad)
+        validar_emision_fiscal(
+            habilitada=True,
+            cuit_emisor=emisor.cuit,
+            punto_venta=emisor.punto_venta,
+            letra=identidad.letra,
+            doc_tipo=identidad.doc_tipo,
+            doc_nro=identidad.doc_nro,
+        )
+        pto = identidad.punto_venta
+        tipo = identidad.cbte_tipo
+        cuit = identidad.cuit_emisor
+        ultimo = await self._fe.ultimo_autorizado(
+            cuit_emisor=cuit, punto_venta=pto, cbte_tipo=tipo
+        )
+        local = await self._dao.max_cbte_nro(pto, tipo)
+        nro = max(ultimo, local) + 1
+        letra_c = identidad.letra == "C"
+        imp_neto = factura.total if letra_c else factura.neto
+        imp_iva = 0.0 if letra_c else factura.iva
+        solicitud = SolicitudFE(
+            cuit_emisor=cuit,
+            punto_venta=pto,
+            cbte_tipo=tipo,
+            cbte_nro=nro,
+            concepto=1,
+            doc_tipo=identidad.doc_tipo,
+            doc_nro=identidad.doc_nro,
+            fecha=factura.fecha,
+            imp_total=factura.total,
+            imp_neto=imp_neto,
+            imp_iva=imp_iva,
+            imp_tot_conc=0.0,
+            iva_id=None if letra_c else id_alicuota(factura.iva_porcentaje),
+            condicion_iva_receptor=identidad.condicion_iva_receptor,
+        )
+        resultado = await self._fe.solicitar_cae(solicitud)
+        if not resultado.autorizada or not resultado.cae:
+            raise ReglaDeNegocioViolada(
+                f"ARCA rechazó la factura: {resultado.error or 'sin CAE'}"
+            )
+        factura.cae = resultado.cae
+        factura.cae_vencimiento = resultado.cae_vencimiento
+        factura.cbte_nro = resultado.cbte_nro or nro
+        factura.punto_venta = pto
+        nro_fiscal = factura.cbte_nro
+        factura.numero = formatear_numero_fiscal(identidad.letra, pto, nro_fiscal)
+        factura.qr_url = armar_qr(
+            fecha=factura.fecha,
+            cuit_emisor=cuit,
+            punto_venta=pto,
+            cbte_tipo=tipo,
+            cbte_nro=nro_fiscal,
+            importe=factura.total,
+            doc_tipo=identidad.doc_tipo,
+            doc_nro=identidad.doc_nro,
+            cae=resultado.cae,
         )
 
     async def _armar_lineas(
