@@ -15,7 +15,7 @@ def _nuevo_id() -> str:
 
 
 class Compra(ConTenant, Base):
-    """Comprobante de compra tipado (remito_compra | factura_compra)."""
+    """Comprobante de compra: pedido_compra | remito_compra | factura_compra."""
 
     __tablename__ = "compras_compra"
 
@@ -31,6 +31,8 @@ class Compra(ConTenant, Base):
     iva_porcentaje: Mapped[float] = mapped_column(Float, default=21.0)
     numero: Mapped[str | None] = mapped_column(String(40), nullable=True, default=None)
     fecha: Mapped[date] = mapped_column(Date)
+    fecha_entrega: Mapped[date | None] = mapped_column(Date, nullable=True, default=None)
+    observaciones: Mapped[str] = mapped_column(String(500), default="")
 
     lineas: Mapped[list["LineaCompra"]] = relationship(
         back_populates="compra", cascade="all, delete-orphan", lazy="selectin"
@@ -42,7 +44,8 @@ class LineaCompra(ConTenant, Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_nuevo_id)
     compra_id: Mapped[str] = mapped_column(String(36), ForeignKey("compras_compra.id"))
-    producto_id: Mapped[str] = mapped_column(String(36))
+    producto_id: Mapped[str] = mapped_column(String(36), default="")
+    codigo_proveedor: Mapped[str] = mapped_column(String(40), default="")
     descripcion: Mapped[str] = mapped_column(String(120), default="")
     cantidad: Mapped[int] = mapped_column(Integer)
     precio_unitario: Mapped[float] = mapped_column(Float)

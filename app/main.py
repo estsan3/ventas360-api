@@ -27,6 +27,7 @@ from app.modulos.compras.router import router as compras_router
 from app.modulos.cxc.router import router as cxc_router
 from app.modulos.cxp.router import router as cxp_router
 from app.modulos.ia.router import router as ia_router
+from app.modulos.pagos.router import router as pagos_router
 from app.modulos.parametros.router import router as parametros_router
 from app.modulos.precios.router import router as precios_router
 from app.modulos.productos.router import router as productos_router
@@ -105,6 +106,7 @@ def crear_aplicacion() -> FastAPI:
     app.include_router(proveedores_router, prefix=prefijo)
     app.include_router(compras_router, prefix=prefijo)
     app.include_router(cxp_router, prefix=prefijo)
+    app.include_router(pagos_router, prefix=prefijo)
     app.include_router(caja_router, prefix=prefijo)
     app.include_router(bancos_router, prefix=prefijo)
     app.include_router(parametros_router, prefix=prefijo)

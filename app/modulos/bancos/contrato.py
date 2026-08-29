@@ -5,7 +5,7 @@ from typing import Protocol
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.excepciones import RecursoNoEncontrado, ReglaDeNegocioViolada
+from app.core.excepciones import RecursoNoEncontrado
 from app.modulos.bancos.bo import BancosBO
 from app.modulos.bancos.dao import BancosDAO
 from app.modulos.bancos.models import MovimientoBancario, ValorBancario

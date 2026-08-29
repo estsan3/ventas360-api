@@ -33,7 +33,7 @@ Sesion = Annotated[AsyncSession, Depends(obtener_sesion)]
 async def listar_productos(
     sesion: Sesion,
     q: str | None = Query(
-        default=None, description="Busca por SKU, nombre, código de barras, marca o rubro"
+        default=None, description="Busca por SKU, nombre, código de barras, marca, rubro o cód. proveedor"
     ),
     activo: bool | None = Query(default=None),
     page: int = Query(default=1, ge=1),

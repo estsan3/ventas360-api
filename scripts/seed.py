@@ -142,11 +142,13 @@ async def sembrar_datos_demo() -> None:
 async def _sembrar_en_tenant(sesion) -> None:
     from app.modulos.tenants.service import TenantsService
     from scripts.seed_casuistica import (
-    asegurar_cartera_cheques,
-    asegurar_casuistica_mostrador,
-    asegurar_casuistica_rica,
-    asegurar_cliente_muchas_deudas,
-    asegurar_cxc_remitos_emitidos,
+        asegurar_caja_y_pagos,
+        asegurar_cartera_cheques,
+        asegurar_casuistica_mostrador,
+        asegurar_casuistica_rica,
+        asegurar_cliente_muchas_deudas,
+        asegurar_codigos_proveedor,
+        asegurar_cxc_remitos_emitidos,
     )
 
     dao = UsuarioDAO(sesion)
@@ -172,6 +174,12 @@ async def _sembrar_en_tenant(sesion) -> None:
         n_chq = await asegurar_cartera_cheques(sesion)
         if n_chq:
             print(f"Cartera de cheques demo: {n_chq} valores.")
+        n_caja, n_pagos = await asegurar_caja_y_pagos(sesion)
+        if n_caja or n_pagos:
+            print(f"Tesorería demo: {n_caja} movimientos de caja, {n_pagos} pagos.")
+        n_cod = await asegurar_codigos_proveedor(sesion)
+        if n_cod:
+            print(f"Códigos de proveedor en artículos: {n_cod} actualizados.")
         return
 
     password_hash = hashear_password(PASSWORD_DEMO)
@@ -455,6 +463,8 @@ async def _sembrar_en_tenant(sesion) -> None:
     await asegurar_cxc_remitos_emitidos(sesion)
     await asegurar_cliente_muchas_deudas(sesion)
     await asegurar_cartera_cheques(sesion)
+    await asegurar_caja_y_pagos(sesion)
+    await asegurar_codigos_proveedor(sesion)
 
 
 if __name__ == "__main__":

@@ -34,6 +34,8 @@ class ProductoDAO:
                     Producto.codigo_barras.ilike(termino),
                     Producto.marca.ilike(termino),
                     Producto.rubro.ilike(termino),
+                    Producto.codigo_proveedor.ilike(termino),
+                    Producto.proveedor.ilike(termino),
                 )
             )
 
@@ -53,6 +55,18 @@ class ProductoDAO:
     async def buscar_por_sku(self, sku: str) -> Producto | None:
         resultado = await self._sesion.execute(
             select(Producto).where(del_tenant(Producto), Producto.sku == sku)
+        )
+        return resultado.scalar_one_or_none()
+
+    async def buscar_por_codigo_proveedor(self, codigo: str) -> Producto | None:
+        codigo_l = codigo.strip()
+        if not codigo_l:
+            return None
+        resultado = await self._sesion.execute(
+            select(Producto).where(
+                del_tenant(Producto),
+                Producto.codigo_proveedor == codigo_l,
+            )
         )
         return resultado.scalar_one_or_none()
 

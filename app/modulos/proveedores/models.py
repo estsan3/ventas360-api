@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, Float, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.database import Base
@@ -48,3 +48,27 @@ class Proveedor(ConTenant, Base):
     ultima_importacion_actualizados: Mapped[int] = mapped_column(Integer, default=0)
     ultima_importacion_nuevos: Mapped[int] = mapped_column(Integer, default=0)
     ultima_importacion_sin_match: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class ListaProveedorItem(ConTenant, Base):
+    """Fila de la lista de precios del proveedor (no es el catálogo)."""
+
+    __tablename__ = "proveedores_lista_item"
+    __table_args__ = (
+        UniqueConstraint(
+            "tenant_id",
+            "proveedor_id",
+            "codigo_proveedor",
+            name="uq_prov_lista_codigo_tenant",
+        ),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_nuevo_id)
+    proveedor_id: Mapped[str] = mapped_column(String(36), index=True)
+    codigo_proveedor: Mapped[str] = mapped_column(String(40), index=True)
+    nombre: Mapped[str] = mapped_column(String(120), default="")
+    costo: Mapped[float] = mapped_column(Float, default=0.0)
+    precio_lista: Mapped[float] = mapped_column(Float, default=0.0)
+    marca: Mapped[str] = mapped_column(String(80), default="")
+    rubro: Mapped[str] = mapped_column(String(80), default="")
+    articulo_id: Mapped[str] = mapped_column(String(36), default="", index=True)

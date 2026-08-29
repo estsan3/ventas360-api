@@ -31,6 +31,8 @@ class Producto(ConTenant, Base):
     marca: Mapped[str] = mapped_column(String(80), default="")
     rubro: Mapped[str] = mapped_column(String(80), default="")
     codigo_barras: Mapped[str] = mapped_column(String(40), default="", index=True)
+    codigo_proveedor: Mapped[str] = mapped_column(String(40), default="", index=True)
+    proveedor: Mapped[str] = mapped_column(String(120), default="")
     costo: Mapped[float] = mapped_column(Float, default=0.0)
     precio: Mapped[float] = mapped_column(Float)
     stock: Mapped[int] = mapped_column(Integer, default=0)

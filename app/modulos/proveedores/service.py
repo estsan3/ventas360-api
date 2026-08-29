@@ -10,11 +10,14 @@ from app.modulos.productos.contrato import ContratoProductos, ProductosLocal
 from app.modulos.proveedores.bo import ProveedorBO
 from app.modulos.proveedores.dao import ProveedorDAO
 from app.modulos.proveedores.excel import parsear_lista_excel
-from app.modulos.proveedores.models import Proveedor, _mapeo_default
+from app.modulos.proveedores.models import ListaProveedorItem, Proveedor, _mapeo_default
 from app.modulos.proveedores.schemas import (
     ActualizarProveedorRequest,
+    AltaArticuloDesdeListaRequest,
     CrearProveedorRequest,
     ImportarListaResponse,
+    ListaItemResponse,
+    ListaItemsPaginaResponse,
     MapeoColumna,
     ProveedoresPaginaResponse,
     ProveedorResponse,
@@ -156,33 +159,41 @@ class ProveedoresService:
                 precio_lista=fila_lista.precio_lista,
                 margen_pct=margen,
             )
-            existente = await self._productos.obtener_por_sku(fila_lista.sku)
-            if existente is None and not fila_lista.nombre:
+            articulo = await self._resolver_articulo(proveedor_id, fila_lista.sku)
+            if articulo is None:
                 sin_match_codigos.append(fila_lista.sku)
-                continue
             if dry_run:
-                if existente is None:
+                if articulo is None:
                     nuevos += 1
                 else:
                     actualizados += 1
                 continue
-            try:
-                _, accion = await self._productos.upsert_desde_lista(
-                    sku=fila_lista.sku,
-                    nombre=fila_lista.nombre,
+            item = await self._dao.buscar_item_por_codigo(proveedor_id, fila_lista.sku)
+            if item is None:
+                item = ListaProveedorItem(
+                    proveedor_id=proveedor_id,
+                    codigo_proveedor=fila_lista.sku[:40],
+                )
+                if articulo is None:
+                    nuevos += 1
+            if articulo is not None:
+                actualizados += 1
+            item.nombre = (fila_lista.nombre or item.nombre)[:120]
+            item.costo = fila_lista.costo
+            item.precio_lista = fila_lista.precio_lista or 0.0
+            item.marca = (fila_lista.marca or "")[:80]
+            item.rubro = (fila_lista.rubro or "")[:80]
+            item.articulo_id = articulo.id if articulo else (item.articulo_id or "")
+            await self._dao.guardar_item(item)
+            if articulo is not None:
+                await self._productos.aplicar_costo_lista(
+                    articulo.id,
                     costo=fila_lista.costo,
                     precio=precio_venta,
-                    marca=fila_lista.marca,
-                    rubro=fila_lista.rubro,
-                    actualizar_precio_venta=actualizar_precio,
+                    actualizar_precio=actualizar_precio,
+                    codigo_proveedor=fila_lista.sku,
+                    proveedor=proveedor.nombre,
                 )
-            except ReglaDeNegocioViolada as exc:
-                omitidas.append(f"SKU {fila_lista.sku}: {exc}")
-                continue
-            if accion == "creado":
-                nuevos += 1
-            else:
-                actualizados += 1
 
         if not dry_run:
             if mapeo_override is not None:
@@ -212,6 +223,102 @@ class ProveedoresService:
             sin_match_codigos=sin_match_codigos[:50],
             preview_cols=parseado.preview_cols,
             preview_rows=parseado.preview_rows,
+        )
+
+    async def listar_items(
+        self,
+        proveedor_id: str,
+        *,
+        q: str | None = None,
+        solo_sin_match: bool = False,
+        page: int = 1,
+        page_size: int = 50,
+    ) -> ListaItemsPaginaResponse:
+        await self._buscar_o_fallar(proveedor_id)
+        items, total = await self._dao.listar_items(
+            proveedor_id,
+            q=q,
+            solo_sin_match=solo_sin_match,
+            page=page,
+            page_size=page_size,
+        )
+        return ListaItemsPaginaResponse(
+            items=[self._a_item(i) for i in items],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
+
+    async def alta_articulo_desde_item(
+        self, proveedor_id: str, item_id: str, datos: AltaArticuloDesdeListaRequest
+    ) -> ListaItemResponse:
+        proveedor = await self._buscar_o_fallar(proveedor_id)
+        item = await self._dao.buscar_item(item_id)
+        if item is None or item.proveedor_id != proveedor_id:
+            raise RecursoNoEncontrado("Ítem de lista no encontrado")
+        if item.articulo_id:
+            raise ReglaDeNegocioViolada("Ese código ya está vinculado a un artículo")
+        articulo = await self._productos.crear_desde_proveedor(
+            sku=datos.sku,
+            nombre=item.nombre or datos.sku,
+            costo=item.costo,
+            precio=datos.precio,
+            marca=item.marca,
+            rubro=item.rubro,
+            codigo_barras=datos.codigo_barras,
+            codigo_proveedor=item.codigo_proveedor,
+            proveedor=proveedor.nombre,
+        )
+        item.articulo_id = articulo.id
+        await self._dao.guardar_item(item)
+        await self._sesion.commit()
+        return self._a_item(item)
+
+    async def vincular_item(
+        self, proveedor_id: str, item_id: str, articulo_id: str
+    ) -> ListaItemResponse:
+        proveedor = await self._buscar_o_fallar(proveedor_id)
+        item = await self._dao.buscar_item(item_id)
+        if item is None or item.proveedor_id != proveedor_id:
+            raise RecursoNoEncontrado("Ítem de lista no encontrado")
+        articulo = await self._productos.obtener_producto(articulo_id)
+        if articulo is None or not articulo.activo:
+            raise RecursoNoEncontrado("Artículo no encontrado")
+        item.articulo_id = articulo.id
+        await self._dao.guardar_item(item)
+        await self._productos.aplicar_costo_lista(
+            articulo.id,
+            costo=item.costo,
+            codigo_proveedor=item.codigo_proveedor,
+            proveedor=proveedor.nombre,
+        )
+        await self._sesion.commit()
+        return self._a_item(item)
+
+    async def _resolver_articulo(self, proveedor_id: str, codigo: str):
+        item = await self._dao.buscar_item_por_codigo(proveedor_id, codigo)
+        if item and item.articulo_id:
+            articulo = await self._productos.obtener_producto(item.articulo_id)
+            if articulo:
+                return articulo
+        por_codigo = await self._productos.obtener_por_codigo_proveedor(codigo)
+        if por_codigo:
+            return por_codigo
+        return await self._productos.obtener_por_sku(codigo)
+
+    def _a_item(self, item: ListaProveedorItem) -> ListaItemResponse:
+        articulo_id = item.articulo_id or ""
+        return ListaItemResponse(
+            id=item.id,
+            proveedor_id=item.proveedor_id,
+            codigo_proveedor=item.codigo_proveedor,
+            nombre=item.nombre,
+            costo=item.costo,
+            precio_lista=item.precio_lista or 0.0,
+            marca=item.marca or "",
+            rubro=item.rubro or "",
+            articulo_id=articulo_id,
+            en_catalogo=bool(articulo_id),
         )
 
     async def _buscar_o_fallar(self, proveedor_id: str) -> Proveedor:

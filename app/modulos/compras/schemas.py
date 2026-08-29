@@ -5,12 +5,13 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-TipoCompra = Literal["remito_compra", "factura_compra"]
+TipoCompra = Literal["pedido_compra", "remito_compra", "factura_compra"]
 
 
 class LineaCompraResponse(BaseModel):
     id: str
-    producto_id: str
+    producto_id: str = ""
+    codigo_proveedor: str = ""
     descripcion: str = ""
     cantidad: int
     precio_unitario: float
@@ -31,13 +32,18 @@ class CompraResponse(BaseModel):
     total: float
     numero: str | None = None
     fecha: date
+    fecha_entrega: date | None = None
+    observaciones: str = ""
+    cantidad_pedida: int = 0
+    cantidad_recibida: int = 0
     lineas: list[LineaCompraResponse]
 
     model_config = {"from_attributes": True}
 
 
 class CrearLineaCompraRequest(BaseModel):
-    producto_id: str
+    producto_id: str | None = Field(default=None, max_length=36)
+    codigo_proveedor: str | None = Field(default=None, max_length=40)
     cantidad: int = Field(gt=0)
     precio_unitario: float | None = Field(default=None, ge=0)
 
@@ -45,8 +51,11 @@ class CrearLineaCompraRequest(BaseModel):
 class CrearCompraRequest(BaseModel):
     proveedor_id: str
     tipo: TipoCompra = "remito_compra"
-    deposito_id: str
+    deposito_id: str = ""
     fecha: date | None = None
+    fecha_entrega: date | None = None
+    observaciones: str = Field(default="", max_length=500)
+    origen_id: str | None = None
     lineas: list[CrearLineaCompraRequest] = Field(min_length=1)
 
 

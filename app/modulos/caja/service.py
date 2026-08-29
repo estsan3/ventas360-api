@@ -1,6 +1,6 @@
 """Service del módulo caja."""
 
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -78,7 +78,7 @@ class CajaService:
             estado="abierta",
             fondo_inicial=round(datos.fondo_inicial, 2),
             abierta_por=abierta_por[:120],
-            abierta_en=datetime.now(timezone.utc),
+            abierta_en=datetime.now(UTC),
         )
         await self._dao.guardar_sesion(caja)
         if datos.fondo_inicial > 0:
@@ -127,7 +127,7 @@ class CajaService:
             esperado_tj, caja.tarjetas_contado
         )
         caja.cerrada_por = cerrada_por[:120]
-        caja.cerrada_en = datetime.now(timezone.utc)
+        caja.cerrada_en = datetime.now(UTC)
         await self._sesion.commit()
         return await self.saldo(fecha)
 

@@ -95,3 +95,32 @@ class ImportarListaResponse(BaseModel):
     sin_match_codigos: list[str] = Field(default_factory=list)
     preview_cols: list[str] = Field(default_factory=list)
     preview_rows: list[list[str]] = Field(default_factory=list)
+
+
+class ListaItemResponse(BaseModel):
+    id: str
+    proveedor_id: str
+    codigo_proveedor: str
+    nombre: str
+    costo: float
+    precio_lista: float = 0.0
+    marca: str = ""
+    rubro: str = ""
+    articulo_id: str = ""
+    en_catalogo: bool = False
+
+    model_config = {"from_attributes": True}
+
+
+class ListaItemsPaginaResponse(PaginaResponse[ListaItemResponse]):
+    """Ítems de la lista del proveedor."""
+
+
+class AltaArticuloDesdeListaRequest(BaseModel):
+    sku: str = Field(min_length=1, max_length=40)
+    codigo_barras: str = Field(default="", max_length=40)
+    precio: float | None = Field(default=None, gt=0)
+
+
+class VincularListaItemRequest(BaseModel):
+    articulo_id: str = Field(min_length=1, max_length=36)

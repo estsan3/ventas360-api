@@ -14,6 +14,8 @@ class ProductoResponse(BaseModel):
     marca: str
     rubro: str
     codigo_barras: str
+    codigo_proveedor: str = ""
+    proveedor: str = ""
     costo: float
     precio: float
     stock: int
@@ -30,6 +32,8 @@ class CrearProductoRequest(BaseModel):
     marca: str = Field(default="", max_length=80)
     rubro: str = Field(default="", max_length=80)
     codigo_barras: str = Field(default="", max_length=40)
+    codigo_proveedor: str = Field(default="", max_length=40)
+    proveedor: str = Field(default="", max_length=120)
     costo: float = Field(default=0.0, ge=0)
     precio: float = Field(gt=0)
     stock: int = Field(ge=0, default=0)
@@ -43,6 +47,8 @@ class ActualizarProductoRequest(BaseModel):
     marca: str | None = Field(default=None, max_length=80)
     rubro: str | None = Field(default=None, max_length=80)
     codigo_barras: str | None = Field(default=None, max_length=40)
+    codigo_proveedor: str | None = Field(default=None, max_length=40)
+    proveedor: str | None = Field(default=None, max_length=120)
     costo: float | None = Field(default=None, ge=0)
     precio: float | None = Field(default=None, gt=0)
     stock: int | None = Field(default=None, ge=0)

@@ -34,8 +34,8 @@ ETIQUETAS_MODULO = {
     "articulos": "Artículos",
     "stock": "Stock",
     "clientes": "Clientes",
-    "ventas": "Presup. / Pedidos / Remitos",
-    "compras": "Compras / Caja / Bancos",
+    "ventas": "Ventas (presup. / pedidos / remitos)",
+    "compras": "Compras / Tesorería",
 }
 ROLES_EDITABLES = ("vendedor", "encargado")
 ROL_ADMINISTRADOR = "administrador"

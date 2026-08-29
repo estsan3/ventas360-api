@@ -40,4 +40,4 @@ sequenceDiagram
 
 ## Contrato público
 
-`ContratoProductos`: `obtener_producto`, `obtener_por_sku`, `listar_activos`, `contar_activos`, `contar_bajo_stock`, `listar_bajo_stock`, `establecer_stock`, `upsert_desde_lista`. Usado por **ventas**, **compras**, **precios**, **stock**, **proveedores**, **reporteria**.
+`ContratoProductos`: `obtener_producto`, `obtener_por_sku`, `obtener_por_codigo_proveedor`, `listar_activos`, `contar_activos`, `contar_bajo_stock`, `listar_bajo_stock`, `establecer_stock`, `aplicar_costo_lista`, `crear_desde_proveedor`. Usado por **ventas**, **compras**, **precios**, **stock**, **proveedores**, **reporteria**.

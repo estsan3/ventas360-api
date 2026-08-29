@@ -32,6 +32,16 @@ class ComprasDAO:
         compra = resultado.scalar_one_or_none()
         return compra if es_del_tenant(compra) else None
 
+    async def listar_por_origen(self, origen_id: str) -> list[Compra]:
+        if not origen_id:
+            return []
+        resultado = await self._sesion.execute(
+            select(Compra)
+            .options(selectinload(Compra.lineas))
+            .where(del_tenant(Compra), Compra.origen_id == origen_id)
+        )
+        return list(resultado.scalars())
+
     async def guardar(self, compra: Compra) -> Compra:
         self._sesion.add(compra)
         await self._sesion.flush()

@@ -74,7 +74,7 @@ def construir_acciones(
                 detalle="Remitos de venta listos para factura",
                 cantidad=kpis.remitos_por_facturar,
                 monto=None,
-                ruta_web="/remitos",
+                ruta_web="/comprobantes/remitos",
             )
         )
 
@@ -88,7 +88,7 @@ def construir_acciones(
                 detalle="Pedidos en borrador esperando preparación",
                 cantidad=kpis.pedidos_pendientes,
                 monto=None,
-                ruta_web="/pedidos",
+                ruta_web="/comprobantes/pedidos",
             )
         )
 

@@ -69,6 +69,8 @@ class ProductosService:
             marca=datos.marca,
             rubro=datos.rubro,
             codigo_barras=datos.codigo_barras,
+            codigo_proveedor=datos.codigo_proveedor,
+            proveedor=datos.proveedor,
             costo=datos.costo,
             precio=datos.precio,
             stock=datos.stock,
@@ -103,6 +105,10 @@ class ProductosService:
             producto.rubro = datos.rubro
         if datos.codigo_barras is not None:
             producto.codigo_barras = datos.codigo_barras
+        if datos.codigo_proveedor is not None:
+            producto.codigo_proveedor = datos.codigo_proveedor
+        if datos.proveedor is not None:
+            producto.proveedor = datos.proveedor
         if datos.costo is not None:
             producto.costo = datos.costo
         if datos.precio is not None:

@@ -48,6 +48,7 @@ async def crear_tablas() -> None:
     from app.modulos.compras import models as _compras_models  # noqa: F401
     from app.modulos.cxc import models as _cxc_models  # noqa: F401
     from app.modulos.cxp import models as _cxp_models  # noqa: F401
+    from app.modulos.pagos import models as _pagos_models  # noqa: F401
     from app.modulos.parametros import models as _parametros_models  # noqa: F401
     from app.modulos.precios import models as _precios_models  # noqa: F401
     from app.modulos.productos import models as _productos_models  # noqa: F401
@@ -59,9 +60,29 @@ async def crear_tablas() -> None:
 
     async with engine.begin() as conexion:
         await conexion.run_sync(Base.metadata.create_all)
+        await conexion.run_sync(_asegurar_columnas_productos)
         await conexion.run_sync(_asegurar_columnas_proveedores)
+        await conexion.run_sync(_asegurar_columnas_compras)
         await conexion.run_sync(_asegurar_caja)
         await conexion.run_sync(_asegurar_bancos)
+
+
+def _asegurar_columnas_productos(conexion) -> None:
+    """SKU propio y código de proveedor son campos distintos."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(conexion)
+    if "productos_producto" not in inspector.get_table_names():
+        return
+    existentes = {col["name"] for col in inspector.get_columns("productos_producto")}
+    extras: list[tuple[str, str]] = [
+        ("codigo_proveedor", "VARCHAR(40) DEFAULT ''"),
+        ("proveedor", "VARCHAR(120) DEFAULT ''"),
+    ]
+    for nombre, tipo in extras:
+        if nombre in existentes:
+            continue
+        conexion.execute(text(f"ALTER TABLE productos_producto ADD COLUMN {nombre} {tipo}"))
 
 
 def _asegurar_columnas_proveedores(conexion) -> None:
@@ -89,6 +110,30 @@ def _asegurar_columnas_proveedores(conexion) -> None:
             continue
         conexion.execute(
             text(f"ALTER TABLE proveedores_proveedor ADD COLUMN {nombre} {tipo}")
+        )
+
+
+def _asegurar_columnas_compras(conexion) -> None:
+    """Pedido de compra, código de proveedor en líneas, recepción parcial."""
+    from sqlalchemy import inspect, text
+
+    inspector = inspect(conexion)
+    if "compras_compra" in inspector.get_table_names():
+        cols = {col["name"] for col in inspector.get_columns("compras_compra")}
+        extras_compra: list[tuple[str, str]] = [
+            ("fecha_entrega", "DATE"),
+            ("observaciones", "VARCHAR(500) DEFAULT ''"),
+        ]
+        for nombre, tipo in extras_compra:
+            if nombre in cols:
+                continue
+            conexion.execute(text(f"ALTER TABLE compras_compra ADD COLUMN {nombre} {tipo}"))
+    if "compras_linea" not in inspector.get_table_names():
+        return
+    cols_linea = {col["name"] for col in inspector.get_columns("compras_linea")}
+    if "codigo_proveedor" not in cols_linea:
+        conexion.execute(
+            text("ALTER TABLE compras_linea ADD COLUMN codigo_proveedor VARCHAR(40) DEFAULT ''")
         )
 
 

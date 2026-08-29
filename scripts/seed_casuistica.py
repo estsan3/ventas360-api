@@ -12,12 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modulos.auth.models import Usuario
 from app.modulos.bancos.models import CuentaBancaria, MovimientoBancario, ValorBancario
-from app.modulos.caja.models import MovimientoCaja
+from app.modulos.caja.models import MovimientoCaja, SesionCaja
 from app.modulos.clientes.models import Cliente
 from app.modulos.compras.models import Compra, LineaCompra
 from app.modulos.cxc.models import MovimientoCxc
 from app.modulos.cxp.models import MovimientoCxp
-from app.modulos.parametros.models import Talonario
+from app.modulos.pagos.models import LineaPago, PagoProveedor
 from app.modulos.precios.models import ListaPrecio, PrecioArticulo
 from app.modulos.productos.models import Producto
 from app.modulos.proveedores.models import Proveedor
@@ -28,6 +28,71 @@ from app.modulos.zonas.models import Zona
 
 HOY = date.today()
 IVA = 21.0
+
+# SKU propio ≠ código del proveedor (maqueta Artículos).
+_CODIGOS_PROV: dict[str, tuple[str, str]] = {
+    "prod-amo750": ("BOS-GWS750", "Distribuidora Herrafe SA"),
+    "prod-dis115": ("TYR-DC11516", "Distribuidora Herrafe SA"),
+    "prod-tor850": ("FIS-8X50-100", "Distribuidora Herrafe SA"),
+    "prod-lat20b": ("ALB-LAT-20", "Pinturerías del Centro SRL"),
+    "prod-cab2x15": ("PRY-2X15-100", "Eléctrica Pampeana"),
+    "prod-guan09": ("LIB-NIT-T9", "Distribuidora Herrafe SA"),
+    "prod-tal13": ("BD-HD650-13", "Distribuidora Herrafe SA"),
+    "prod-cinp24": ("DA-CP24", "Pinturerías del Centro SRL"),
+    "prod-coramk": ("GAT-PV-AMK20", "Distribuidora Herrafe SA"),
+    "prod-coramkd": ("CON-KIT-AMK20", "Distribuidora Herrafe SA"),
+    "prod-tenamk": ("SKF-TEN-AMK", "Distribuidora Herrafe SA"),
+    "prod-corv6": ("GAT-ALT-AMKV6", "Distribuidora Herrafe SA"),
+    "prod-esm1l": ("ALB-ESM-1L", "Pinturerías del Centro SRL"),
+    "prod-mem10": ("DAN-MEM-10", "Pinturerías del Centro SRL"),
+    "prod-pishvlp": ("DEV-HVLP", "Pinturerías del Centro SRL"),
+    "prod-discooff": ("GEN-DC-OFF", "Distribuidora Herrafe SA"),
+    "prod-1": ("AND-NB14", "Distribuidora Andina SA"),
+    "prod-2": ("LOG-M170", "Importadora Sur"),
+    "prod-3": ("KPR-MK-TK200", "Importadora Sur"),
+    "prod-4": ("VMX-MN27", "Importadora Sur"),
+}
+
+
+def _prov_por_rubro(rubro: str) -> str:
+    if rubro in {"Herramientas", "Fijaciones", "Seguridad", "Correas", "Construcción"}:
+        return "Distribuidora Herrafe SA"
+    if rubro in {"Pinturas"}:
+        return "Pinturerías del Centro SRL"
+    if rubro in {"Electricidad"}:
+        return "Eléctrica Pampeana"
+    if rubro in {"Informática", "Periféricos"}:
+        return "Importadora Sur"
+    return "Distribuidora Andina SA"
+
+
+async def asegurar_codigos_proveedor(sesion: AsyncSession) -> int:
+    """Completa código y nombre de proveedor sin pisar el SKU propio."""
+    from sqlalchemy import select
+
+    items = list((await sesion.execute(select(Producto))).scalars())
+    n = 0
+    for p in items:
+        mapped = _CODIGOS_PROV.get(p.id)
+        if mapped:
+            codigo, nombre = mapped
+            if p.codigo_proveedor != codigo or p.proveedor != nombre:
+                p.codigo_proveedor = codigo
+                p.proveedor = nombre
+                n += 1
+            continue
+        if (p.codigo_proveedor or "").strip():
+            if not (p.proveedor or "").strip():
+                p.proveedor = _prov_por_rubro(p.rubro or "")
+                n += 1
+            continue
+        marca = (p.marca or "PRV")[:3].upper()
+        p.codigo_proveedor = f"{marca}-{p.sku}"[:40]
+        p.proveedor = _prov_por_rubro(p.rubro or "")
+        n += 1
+    if n:
+        await sesion.commit()
+    return n
 
 
 def _imp(neto: float) -> tuple[float, float, float]:
@@ -297,6 +362,8 @@ async def asegurar_casuistica_rica(sesion: AsyncSession) -> bool:
                 marca=marca,
                 rubro=rubro,
                 codigo_barras=f"779{abs(hash(sku)) % 10_000_000_000:010d}"[:13],
+                codigo_proveedor=_CODIGOS_PROV.get(pid, (f"{marca[:3].upper()}-{sku}", _prov_por_rubro(rubro)))[0],
+                proveedor=_CODIGOS_PROV.get(pid, ("", _prov_por_rubro(rubro)))[1],
                 costo=float(costo),
                 precio=float(precio),
                 stock=stock,
@@ -1697,3 +1764,272 @@ async def asegurar_cliente_muchas_deudas(sesion: AsyncSession) -> int:
         )
     await sesion.commit()
     return len(deudas)
+
+
+async def _id_proveedor(sesion: AsyncSession, preferido: str, fallback: str) -> str | None:
+    if await sesion.get(Proveedor, preferido) is not None:
+        return preferido
+    if await sesion.get(Proveedor, fallback) is not None:
+        return fallback
+    return None
+
+
+async def _tenant_comercio_demo(sesion: AsyncSession) -> str:
+    from sqlalchemy import select
+
+    from app.core.tenant_ctx import tenant_id_actual
+    from app.modulos.tenants.ids import SLUG_TENANT_DEMO
+    from app.modulos.tenants.models import Tenant
+
+    t = (
+        await sesion.execute(select(Tenant).where(Tenant.slug == SLUG_TENANT_DEMO))
+    ).scalar_one_or_none()
+    if t is not None:
+        return t.id
+    return tenant_id_actual()
+
+
+async def asegurar_caja_y_pagos(sesion: AsyncSession) -> tuple[int, int]:
+    """Caja abierta hoy + movimientos, y pagos a proveedor (idempotente)."""
+    from datetime import UTC, date, datetime
+
+    from app.modulos.caja.dao import CajaDAO
+
+    hoy = date.today()
+    n_caja = 0
+    n_pagos = 0
+    tid = await _tenant_comercio_demo(sesion)
+    from sqlalchemy import text as sql_text
+
+    await sesion.execute(
+        sql_text("UPDATE caja_sesion SET tenant_id=:t WHERE id LIKE 'caja-ses-%' AND tenant_id='tnt-demo'"),
+        {"t": tid},
+    )
+    await sesion.execute(
+        sql_text("UPDATE caja_movimiento SET tenant_id=:t WHERE id LIKE 'caja-demo-%'"),
+        {"t": tid},
+    )
+    await sesion.execute(
+        sql_text("UPDATE pagos_pago SET tenant_id=:t WHERE id LIKE 'pago-demo-%'"),
+        {"t": tid},
+    )
+    await sesion.execute(
+        sql_text("UPDATE pagos_linea SET tenant_id=:t WHERE id LIKE 'pago-demo-%'"),
+        {"t": tid},
+    )
+    await sesion.execute(
+        sql_text("UPDATE cxp_movimiento SET tenant_id=:t WHERE id LIKE 'cxp-pago-demo-%'"),
+        {"t": tid},
+    )
+    await sesion.execute(
+        sql_text("UPDATE bancos_valor SET tenant_id=:t WHERE id='chq-pago-p1'"),
+        {"t": tid},
+    )
+    await sesion.execute(
+        sql_text("UPDATE bancos_movimiento SET tenant_id=:t WHERE id LIKE 'bco-pago-demo-%'"),
+        {"t": tid},
+    )
+    await sesion.execute(
+        sql_text(
+            "UPDATE caja_sesion SET abierta_en = COALESCE(abierta_en, CURRENT_TIMESTAMP) "
+            "WHERE id LIKE 'caja-ses-%'"
+        )
+    )
+    await sesion.flush()
+    await sesion.commit()
+
+    dao = CajaDAO(sesion)
+    abierta = await dao.buscar_abierta(hoy)
+    sesion_id = abierta.id if abierta is not None else f"caja-ses-{hoy.isoformat()}"
+    if abierta is None and await sesion.get(SesionCaja, sesion_id) is None:
+        sesion.add(
+            SesionCaja(
+                id=sesion_id,
+                tenant_id=tid,
+                fecha=hoy,
+                estado="abierta",
+                fondo_inicial=80000.0,
+                abierta_por="Admin Demo",
+                abierta_en=datetime.now(UTC),
+            )
+        )
+        n_caja += 1
+
+    movs: list[tuple[str, str, str, float, str, str, str]] = [
+        (
+            f"caja-demo-{hoy.isoformat()}-fondo",
+            "ingreso",
+            "efectivo",
+            80000.0,
+            "Fondo inicial",
+            "apertura",
+            sesion_id,
+        ),
+        (
+            f"caja-demo-{hoy.isoformat()}-cob1",
+            "ingreso",
+            "efectivo",
+            45200.0,
+            "Cobranza mostrador Aníbal",
+            "recibo",
+            "rec-demo-c1",
+        ),
+        (
+            f"caja-demo-{hoy.isoformat()}-cob2",
+            "ingreso",
+            "efectivo",
+            18750.0,
+            "Cobranza recibo Pintado Fácil",
+            "recibo",
+            "rec-demo-c2",
+        ),
+        (
+            f"caja-demo-{hoy.isoformat()}-tarj",
+            "ingreso",
+            "tarjeta",
+            32100.0,
+            "Cobro tarjeta débito mostrador",
+            "recibo",
+            "rec-demo-tj",
+        ),
+        (
+            f"caja-demo-{hoy.isoformat()}-flete",
+            "egreso",
+            "efectivo",
+            8500.0,
+            "Flete / gastos menores",
+            "gasto",
+            "gas-demo-1",
+        ),
+        (
+            f"caja-demo-{hoy.isoformat()}-pago",
+            "egreso",
+            "efectivo",
+            85000.0,
+            "Pago a Distribuidora Herrafe",
+            "pago_proveedor",
+            "pago-demo-ef",
+        ),
+    ]
+    for mov_id, tipo, medio, monto, concepto, ref_tipo, ref_id in movs:
+        if await sesion.get(MovimientoCaja, mov_id) is not None:
+            continue
+        sesion.add(
+            MovimientoCaja(
+                id=mov_id,
+                tenant_id=tid,
+                fecha=hoy,
+                tipo=tipo,
+                medio=medio,
+                monto=monto,
+                concepto=concepto,
+                referencia_tipo=ref_tipo,
+                referencia_id=ref_id,
+                sesion_id=sesion_id,
+            )
+        )
+        n_caja += 1
+
+    herrafe = await _id_proveedor(sesion, "prov-herrafe", "prov-1")
+    electrica = await _id_proveedor(sesion, "prov-electrica", "prov-2")
+    pinturas = await _id_proveedor(sesion, "prov-pinturas", "prov-1")
+
+    pagos: list[tuple[str, str | None, float, str, str, date]] = [
+        ("pago-demo-ef", herrafe, 85000.0, "efectivo", "Pago contado Herrafe", hoy),
+        (
+            "pago-demo-tr",
+            electrica,
+            118760.0,
+            "transferencia",
+            "Transferencia Eléctrica Pampeana",
+            hoy - timedelta(days=2),
+        ),
+        (
+            "pago-demo-ch",
+            pinturas,
+            96000.0,
+            "cheque",
+            "Cheque propio Pinturerías del Centro",
+            hoy - timedelta(days=1),
+        ),
+    ]
+    for pago_id, proveedor_id, monto, medio, obs, fecha in pagos:
+        if proveedor_id is None or await sesion.get(PagoProveedor, pago_id) is not None:
+            continue
+        cheque_id = ""
+        if medio == "cheque":
+            cheque_id = "chq-pago-p1"
+            if await sesion.get(ValorBancario, cheque_id) is None:
+                sesion.add(
+                    ValorBancario(
+                        id=cheque_id,
+                        tenant_id=tid,
+                        tipo="cheque_propio",
+                        estado="entregado",
+                        monto=monto,
+                        fecha=fecha,
+                        fecha_vto=fecha + timedelta(days=15),
+                        numero="00012090",
+                        librador="Propio",
+                        banco_emisor="Banco de la Nación Argentina",
+                        entregado_a="Pinturerías del Centro SRL",
+                        fecha_entrega=fecha,
+                        origen="pago",
+                        origen_id=pago_id,
+                        observacion=obs,
+                    )
+                )
+        sesion.add(
+            PagoProveedor(
+                id=pago_id,
+                tenant_id=tid,
+                proveedor_id=proveedor_id,
+                fecha=fecha,
+                monto=monto,
+                medio=medio,
+                observacion=obs,
+            )
+        )
+        sesion.add(
+            LineaPago(
+                id=f"{pago_id}-l1",
+                tenant_id=tid,
+                pago_id=pago_id,
+                medio=medio,
+                monto=monto,
+                cheque_id=cheque_id,
+            )
+        )
+        if await sesion.get(MovimientoCxp, f"cxp-{pago_id}") is None:
+            sesion.add(
+                MovimientoCxp(
+                    id=f"cxp-{pago_id}",
+                    tenant_id=tid,
+                    proveedor_id=proveedor_id,
+                    tipo="haber",
+                    monto=monto,
+                    referencia_tipo="pago_proveedor",
+                    referencia_id=pago_id,
+                    concepto=obs,
+                    fecha=fecha,
+                )
+            )
+        if medio == "transferencia" and await sesion.get(MovimientoBancario, f"bco-{pago_id}") is None:
+            sesion.add(
+                MovimientoBancario(
+                    id=f"bco-{pago_id}",
+                    tenant_id=tid,
+                    cuenta_id="bco-1",
+                    fecha=fecha,
+                    tipo="debito",
+                    monto=monto,
+                    concepto=obs,
+                    referencia_tipo="pago_proveedor",
+                    referencia_id=pago_id,
+                )
+            )
+        n_pagos += 1
+
+    if n_caja or n_pagos:
+        await sesion.commit()
+    return n_caja, n_pagos

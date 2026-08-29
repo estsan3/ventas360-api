@@ -1,4 +1,4 @@
-"""Service compras: remito/factura → stock + CxP."""
+"""Service compras: pedido → remito (stock) → factura (CxP)."""
 
 from datetime import date
 
@@ -53,18 +53,26 @@ class ComprasService:
 
     async def listar(self, tipo: str | None = None) -> list[CompraResponse]:
         compras = await self._dao.listar(tipo=tipo)
-        return [CompraResponse.model_validate(c) for c in compras]
+        return [await self._a_response(c) for c in compras]
 
     async def obtener(self, compra_id: str) -> CompraResponse:
-        return CompraResponse.model_validate(await self._buscar_o_fallar(compra_id))
+        return await self._a_response(await self._buscar_o_fallar(compra_id))
 
     async def crear(self, datos: CrearCompraRequest) -> CompraResponse:
         self._bo.validar_tipo(datos.tipo)
         self._bo.validar_creacion(len(datos.lineas))
         if not await self._proveedores.existe_proveedor(datos.proveedor_id):
             raise ReglaDeNegocioViolada("Proveedor inexistente o inactivo")
-        if not datos.deposito_id:
+        if datos.tipo != "pedido_compra" and not datos.deposito_id:
             raise ReglaDeNegocioViolada("La compra requiere deposito_id")
+        if datos.origen_id:
+            origen = await self._dao.buscar_por_id(datos.origen_id)
+            if origen is None:
+                raise RecursoNoEncontrado("Comprobante de origen no encontrado")
+            if datos.tipo == "remito_compra" and origen.tipo != "pedido_compra":
+                raise ReglaDeNegocioViolada("El remito solo puede originarse en un pedido")
+            if datos.tipo == "factura_compra" and origen.tipo != "remito_compra":
+                raise ReglaDeNegocioViolada("La factura solo puede originarse en un remito")
 
         negocio = await self._parametros.obtener_negocio()
         lineas, totales = await self._armar_lineas(datos)
@@ -73,8 +81,11 @@ class ComprasService:
         compra = Compra(
             tipo=datos.tipo,
             proveedor_id=datos.proveedor_id,
-            deposito_id=datos.deposito_id,
+            deposito_id=datos.deposito_id or None,
+            origen_id=datos.origen_id,
             fecha=datos.fecha or date.today(),
+            fecha_entrega=datos.fecha_entrega,
+            observaciones=datos.observaciones or "",
             neto=neto,
             iva=iva,
             iva_porcentaje=negocio.iva_porcentaje,
@@ -85,7 +96,7 @@ class ComprasService:
         await self._dao.guardar(compra)
         await self._sesion.commit()
         await self._sesion.refresh(compra, attribute_names=["lineas"])
-        return CompraResponse.model_validate(compra)
+        return await self._a_response(compra)
 
     async def parsear_remito_foto(
         self,
@@ -163,21 +174,54 @@ class ComprasService:
             modo_parser=modo_parser,
         )
 
+    async def emitir(self, compra_id: str) -> CompraResponse:
+        compra = await self._buscar_o_fallar(compra_id)
+        self._bo.validar_emitir_pedido(compra.tipo, compra.estado)
+        compra.estado = "emitido"
+        await self._sesion.commit()
+        await self._sesion.refresh(compra, attribute_names=["lineas"])
+        await bus_eventos.publicar(
+            EventoDominio(
+                nombre="compras.pedido.emitido",
+                datos={
+                    "compra_id": compra.id,
+                    "proveedor_id": compra.proveedor_id,
+                    "total": compra.total,
+                },
+            )
+        )
+        return await self._a_response(compra)
+
     async def confirmar(self, compra_id: str) -> CompraResponse:
         compra = await self._buscar_o_fallar(compra_id)
         self._bo.validar_confirmacion(compra.tipo, compra.estado, compra.deposito_id)
         assert compra.deposito_id is not None
 
-        for linea in compra.lineas:
-            await self._stock.ingresar(
-                articulo_id=linea.producto_id,
-                deposito_id=compra.deposito_id,
-                cantidad=linea.cantidad,
-                referencia=f"{compra.tipo}:{compra.id}",
-            )
-
-        compra.estado = "confirmado"
-        if compra.tipo == "factura_compra":
+        if compra.tipo == "remito_compra":
+            sin_articulo = sum(1 for linea in compra.lineas if not linea.producto_id)
+            self._bo.validar_lineas_con_articulo(sin_articulo)
+            for linea in compra.lineas:
+                await self._stock.ingresar(
+                    articulo_id=linea.producto_id,
+                    deposito_id=compra.deposito_id,
+                    cantidad=linea.cantidad,
+                    referencia=f"{compra.tipo}:{compra.id}",
+                )
+            compra.estado = "confirmado"
+            await self._actualizar_estado_pedido(compra.origen_id)
+        else:
+            # factura_compra: stock solo si no viene de un remito ya confirmado
+            if not compra.origen_id:
+                sin_articulo = sum(1 for linea in compra.lineas if not linea.producto_id)
+                self._bo.validar_lineas_con_articulo(sin_articulo)
+                for linea in compra.lineas:
+                    await self._stock.ingresar(
+                        articulo_id=linea.producto_id,
+                        deposito_id=compra.deposito_id,
+                        cantidad=linea.cantidad,
+                        referencia=f"{compra.tipo}:{compra.id}",
+                    )
+            compra.estado = "confirmado"
             await self._imputar_factura_en_cxp(compra)
 
         await self._sesion.commit()
@@ -193,7 +237,7 @@ class ComprasService:
                 },
             )
         )
-        return CompraResponse.model_validate(compra)
+        return await self._a_response(compra)
 
     async def facturar_remito(self, remito_id: str) -> CompraResponse:
         remito = await self._buscar_o_fallar(remito_id)
@@ -202,6 +246,7 @@ class ComprasService:
         lineas = [
             LineaCompra(
                 producto_id=linea.producto_id,
+                codigo_proveedor=linea.codigo_proveedor or "",
                 descripcion=linea.descripcion,
                 cantidad=linea.cantidad,
                 precio_unitario=linea.precio_unitario,
@@ -237,7 +282,7 @@ class ComprasService:
                 },
             )
         )
-        return CompraResponse.model_validate(factura)
+        return await self._a_response(factura)
 
     async def _imputar_factura_en_cxp(self, factura: Compra) -> None:
         await self._cxp.registrar_debe(
@@ -255,27 +300,78 @@ class ComprasService:
         lineas: list[LineaCompra] = []
         total = 0.0
         for item in datos.lineas:
-            producto = await self._productos.obtener_producto(item.producto_id)
-            if producto is None or not producto.activo:
-                raise ReglaDeNegocioViolada(
-                    f"Producto inexistente o inactivo: {item.producto_id}"
-                )
-            # Compras usan costo de lista del proveedor; venta usa producto.precio.
+            self._bo.validar_linea(item.producto_id, item.codigo_proveedor)
+            producto_id = (item.producto_id or "").strip()
+            codigo = (item.codigo_proveedor or "").strip()
+            descripcion = ""
+            costo_lista: float | None = None
+
+            if producto_id:
+                producto = await self._productos.obtener_producto(producto_id)
+                if producto is None or not producto.activo:
+                    raise ReglaDeNegocioViolada(
+                        f"Producto inexistente o inactivo: {producto_id}"
+                    )
+                descripcion = producto.nombre
+                costo_lista = producto.costo
+                if not codigo:
+                    codigo = producto.codigo_proveedor or ""
+            elif codigo:
+                fila = await self._proveedores.obtener_item(datos.proveedor_id, codigo)
+                if fila is None:
+                    raise ReglaDeNegocioViolada(
+                        f"Código de proveedor no está en la lista: {codigo}"
+                    )
+                descripcion = fila.nombre
+                costo_lista = fila.costo
+                producto_id = fila.articulo_id or ""
+
             precio = (
                 item.precio_unitario
                 if item.precio_unitario is not None
-                else producto.costo
+                else (costo_lista or 0.0)
             )
             lineas.append(
                 LineaCompra(
-                    producto_id=producto.id,
-                    descripcion=producto.nombre,
+                    producto_id=producto_id,
+                    codigo_proveedor=codigo[:40],
+                    descripcion=descripcion[:120],
                     cantidad=item.cantidad,
                     precio_unitario=precio,
                 )
             )
             total += item.cantidad * precio
         return lineas, total
+
+    async def _actualizar_estado_pedido(self, pedido_id: str | None) -> None:
+        if not pedido_id:
+            return
+        pedido = await self._dao.buscar_por_id(pedido_id)
+        if pedido is None or pedido.tipo != "pedido_compra":
+            return
+        if pedido.estado in {"cerrado", "cancelado", "borrador"}:
+            return
+        pedida, recibida = await self._cantidades_pedido(pedido)
+        pedido.estado = self._bo.estado_pedido_segun_recepcion(pedida, recibida)
+
+    async def _cantidades_pedido(self, pedido: Compra) -> tuple[int, int]:
+        pedida = sum(linea.cantidad for linea in pedido.lineas)
+        recibida = 0
+        for remito in await self._dao.listar_por_origen(pedido.id):
+            if remito.tipo != "remito_compra":
+                continue
+            if remito.estado not in {"confirmado", "facturado"}:
+                continue
+            recibida += sum(linea.cantidad for linea in remito.lineas)
+        return pedida, recibida
+
+    async def _a_response(self, compra: Compra) -> CompraResponse:
+        resp = CompraResponse.model_validate(compra)
+        if compra.tipo == "pedido_compra":
+            pedida, recibida = await self._cantidades_pedido(compra)
+            resp.cantidad_pedida = pedida
+            resp.cantidad_recibida = recibida
+        return resp
 
     async def _buscar_o_fallar(self, compra_id: str) -> Compra:
         compra = await self._dao.buscar_por_id(compra_id)

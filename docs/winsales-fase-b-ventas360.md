@@ -6,7 +6,7 @@ Fase A (A1–A9) cerrada. Esta fase amplía compras, tesorería y fiscal.
 
 | Slice | Alcance | Estado |
 |-------|---------|--------|
-| **B1** Proveedores + compras mínimas | Maestro proveedores, remito/factura de compra → ingreso stock + CxP | Hecho (API + web) |
+| **B1** Proveedores + compras | Maestro, lista ≠ catálogo, pedido (OC), remito parcial, factura + CxP | Hecho (API + web) |
 | **B2** Caja / medios | Caja diaria, vínculo con cobranzas | Hecho (API + web) |
 | **B3** Bancos / valores | Cuentas bancarias, cheques/valores livianos | Hecho (API + web) |
 | **B4** AFIP real | Puerto WSAA/WSFE + adaptador (hoy solo placeholder CAE) | Pendiente |
@@ -16,11 +16,13 @@ Fase A (A1–A9) cerrada. Esta fase amplía compras, tesorería y fiscal.
 ## B1 — Criterios de aceptación
 
 - [x] CRUD proveedores (paginado).
-- [x] Crear remito de compra y confirmar → ingresa stock al depósito.
-- [x] Crear/confirmar factura de compra → ingresa stock (si aplica) e imputa CxP (debe).
+- [x] Lista del proveedor persistida al importar Excel; **no** crea el catálogo. Alta/vínculo con SKU propio.
+- [x] Pedido de compra (OC): borrador → emitir. No mueve stock ni CxP.
+- [x] Remito de compra (también parcial contra un pedido) → confirmar ingresa stock.
+- [x] Factura de compra: directa (stock + CxP) o desde remito (solo CxP, sin duplicar stock).
 - [x] Consultar saldo CxP por proveedor (`GET /cxp/...`).
-- [x] Web: menú Proveedores + Compras con UI kit.
-- [x] Sin OC formales, sin contabilidad.
+- [x] Web: `/compras` (pedidos, remitos/facturas, proveedores, listas).
+- [x] Sin pagos a proveedor, sin contabilidad, sin AFIP.
 
 ## B2 — Caja / medios
 
@@ -38,7 +40,7 @@ Fase A (A1–A9) cerrada. Esta fase amplía compras, tesorería y fiscal.
 
 ## Fuera de Fase B (Fase C / descartable)
 
-Contabilidad operativa, OC formales, taller completo, mensajería interna.
+Contabilidad operativa, pagos a proveedor, AFIP, taller completo, mensajería interna.
 
 ## Siguiente slice sugerido
 

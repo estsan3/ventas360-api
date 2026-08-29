@@ -10,10 +10,14 @@ from app.core.database import obtener_sesion
 from app.core.excepciones import ReglaDeNegocioViolada
 from app.modulos.proveedores.schemas import (
     ActualizarProveedorRequest,
+    AltaArticuloDesdeListaRequest,
     CrearProveedorRequest,
     ImportarListaResponse,
+    ListaItemResponse,
+    ListaItemsPaginaResponse,
     ProveedoresPaginaResponse,
     ProveedorResponse,
+    VincularListaItemRequest,
 )
 from app.modulos.proveedores.service import ProveedoresService
 from app.modulos.tenants.dependencias import exigir_usuario_del_comercio, requerir_modulo
@@ -99,7 +103,7 @@ async def importar_lista_proveedor(
     margen_venta_pct: float | None = Form(default=None),
     dry_run: bool = Query(default=False),
 ) -> ImportarListaResponse:
-    """Importa (o previsualiza) una lista Excel → upsert de artículos/costos."""
+    """Importa (o previsualiza) una lista Excel. No crea artículos del catálogo."""
     nombre = archivo.filename or "lista.xlsx"
     if not nombre.lower().endswith((".xlsx", ".xlsm")):
         raise ReglaDeNegocioViolada("El archivo debe ser Excel (.xlsx)")
@@ -130,4 +134,58 @@ async def importar_lista_proveedor(
         politica=politica_precio_venta,
         margen_pct=margen_venta_pct,
         dry_run=dry_run,
+    )
+
+
+@router.get(
+    "/{proveedor_id}/listas/items",
+    response_model=ListaItemsPaginaResponse,
+    operation_id="listar_items_lista_proveedor",
+)
+async def listar_items_lista_proveedor(
+    proveedor_id: str,
+    sesion: Sesion,
+    q: str | None = Query(default=None),
+    solo_sin_match: bool = Query(default=False),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+) -> ListaItemsPaginaResponse:
+    return await ProveedoresService(sesion).listar_items(
+        proveedor_id,
+        q=q,
+        solo_sin_match=solo_sin_match,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.post(
+    "/{proveedor_id}/listas/items/{item_id}/alta",
+    response_model=ListaItemResponse,
+    operation_id="alta_articulo_desde_lista",
+)
+async def alta_articulo_desde_lista(
+    proveedor_id: str,
+    item_id: str,
+    datos: AltaArticuloDesdeListaRequest,
+    sesion: Sesion,
+) -> ListaItemResponse:
+    return await ProveedoresService(sesion).alta_articulo_desde_item(
+        proveedor_id, item_id, datos
+    )
+
+
+@router.post(
+    "/{proveedor_id}/listas/items/{item_id}/vincular",
+    response_model=ListaItemResponse,
+    operation_id="vincular_item_lista_articulo",
+)
+async def vincular_item_lista_articulo(
+    proveedor_id: str,
+    item_id: str,
+    datos: VincularListaItemRequest,
+    sesion: Sesion,
+) -> ListaItemResponse:
+    return await ProveedoresService(sesion).vincular_item(
+        proveedor_id, item_id, datos.articulo_id
     )

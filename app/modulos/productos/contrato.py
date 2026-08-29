@@ -25,6 +25,8 @@ class ProductoResumen:
     marca: str = ""
     rubro: str = ""
     codigo_barras: str = ""
+    codigo_proveedor: str = ""
+    proveedor: str = ""
 
 
 class ContratoProductos(Protocol):
@@ -51,6 +53,35 @@ class ContratoProductos(Protocol):
     async def listar_activos(self) -> list[ProductoResumen]: ...
 
     async def establecer_stock(self, producto_id: str, stock: int) -> None: ...
+
+    async def obtener_por_codigo_proveedor(
+        self, codigo: str
+    ) -> ProductoResumen | None: ...
+
+    async def aplicar_costo_lista(
+        self,
+        producto_id: str,
+        *,
+        costo: float,
+        precio: float | None = None,
+        actualizar_precio: bool = False,
+        codigo_proveedor: str = "",
+        proveedor: str = "",
+    ) -> None: ...
+
+    async def crear_desde_proveedor(
+        self,
+        *,
+        sku: str,
+        nombre: str,
+        costo: float,
+        precio: float | None = None,
+        marca: str = "",
+        rubro: str = "",
+        codigo_barras: str = "",
+        codigo_proveedor: str = "",
+        proveedor: str = "",
+    ) -> ProductoResumen: ...
 
     async def upsert_desde_lista(
         self,
@@ -116,6 +147,71 @@ class ProductosLocal:
         producto.stock = stock
         await self._dao.guardar(producto)
 
+    async def obtener_por_codigo_proveedor(self, codigo: str) -> ProductoResumen | None:
+        producto = await self._dao.buscar_por_codigo_proveedor(codigo)
+        return self._a_resumen(producto) if producto else None
+
+    async def aplicar_costo_lista(
+        self,
+        producto_id: str,
+        *,
+        costo: float,
+        precio: float | None = None,
+        actualizar_precio: bool = False,
+        codigo_proveedor: str = "",
+        proveedor: str = "",
+    ) -> None:
+        producto = await self._dao.buscar_por_id(producto_id)
+        if producto is None:
+            return
+        precio_final = producto.precio
+        if actualizar_precio and precio is not None and precio > 0:
+            precio_final = precio
+        self._bo.validar_precios(costo, precio_final)
+        producto.costo = costo
+        producto.precio = precio_final
+        if codigo_proveedor.strip():
+            producto.codigo_proveedor = codigo_proveedor.strip()[:40]
+        if proveedor.strip():
+            producto.proveedor = proveedor.strip()[:120]
+        await self._dao.guardar(producto)
+
+    async def crear_desde_proveedor(
+        self,
+        *,
+        sku: str,
+        nombre: str,
+        costo: float,
+        precio: float | None = None,
+        marca: str = "",
+        rubro: str = "",
+        codigo_barras: str = "",
+        codigo_proveedor: str = "",
+        proveedor: str = "",
+    ) -> ProductoResumen:
+        sku_limpio = sku.strip()
+        self._bo.validar_alta(
+            sku_ya_registrado=await self._dao.buscar_por_sku(sku_limpio) is not None
+        )
+        if not nombre.strip():
+            raise ReglaDeNegocioViolada("El artículo requiere descripción")
+        precio_final = precio if precio is not None and precio > 0 else max(costo, 0.01)
+        self._bo.validar_precios(costo, precio_final)
+        producto = Producto(
+            sku=sku_limpio[:40],
+            nombre=nombre.strip()[:120],
+            marca=(marca or "")[:80],
+            rubro=(rubro or "")[:80],
+            codigo_barras=(codigo_barras or "")[:40],
+            codigo_proveedor=(codigo_proveedor or "")[:40],
+            proveedor=(proveedor or "")[:120],
+            costo=costo,
+            precio=precio_final,
+            stock=0,
+        )
+        await self._dao.guardar(producto)
+        return self._a_resumen(producto)
+
     async def upsert_desde_lista(
         self,
         *,
@@ -125,6 +221,8 @@ class ProductosLocal:
         precio: float | None = None,
         marca: str = "",
         rubro: str = "",
+        codigo_proveedor: str = "",
+        proveedor: str = "",
         actualizar_precio_venta: bool = False,
     ) -> tuple[ProductoResumen, Literal["creado", "actualizado"]]:
         """Crea o actualiza un artículo desde la lista del proveedor.
@@ -132,7 +230,10 @@ class ProductosLocal:
         Sin commit: lo controla el service orquestador.
         """
         sku_limpio = sku.strip()
-        existente = await self._dao.buscar_por_sku(sku_limpio)
+        codigo_prov = (codigo_proveedor or sku_limpio).strip()[:40]
+        existente = await self._dao.buscar_por_codigo_proveedor(codigo_prov)
+        if existente is None:
+            existente = await self._dao.buscar_por_sku(sku_limpio)
         if existente is None:
             if not nombre.strip():
                 raise ReglaDeNegocioViolada(
@@ -145,6 +246,8 @@ class ProductosLocal:
                 nombre=nombre.strip()[:120],
                 marca=(marca or "")[:80],
                 rubro=(rubro or "")[:80],
+                codigo_proveedor=codigo_prov,
+                proveedor=(proveedor or "")[:120],
                 costo=costo,
                 precio=precio_final,
                 stock=0,
@@ -159,6 +262,10 @@ class ProductosLocal:
             existente.marca = marca[:80]
         if rubro:
             existente.rubro = rubro[:80]
+        if codigo_prov:
+            existente.codigo_proveedor = codigo_prov
+        if proveedor:
+            existente.proveedor = proveedor[:120]
         if actualizar_precio_venta and precio is not None and precio > 0:
             existente.precio = precio
         self._bo.validar_precios(existente.costo, existente.precio)
@@ -177,4 +284,6 @@ class ProductosLocal:
             marca=producto.marca,
             rubro=producto.rubro,
             codigo_barras=producto.codigo_barras,
+            codigo_proveedor=producto.codigo_proveedor,
+            proveedor=producto.proveedor,
         )

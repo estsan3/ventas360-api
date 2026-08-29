@@ -80,6 +80,15 @@ async def confirmar_compra(compra_id: str, sesion: Sesion) -> CompraResponse:
 
 
 @router.post(
+    "/{compra_id}/emitir",
+    response_model=CompraResponse,
+    operation_id="emitir_pedido_compra",
+)
+async def emitir_pedido_compra(compra_id: str, sesion: Sesion) -> CompraResponse:
+    return await ComprasService(sesion).emitir(compra_id)
+
+
+@router.post(
     "/{compra_id}/facturar",
     response_model=CompraResponse,
     operation_id="facturar_remito_compra",
