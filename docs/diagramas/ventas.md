@@ -1,7 +1,7 @@
 # ventas — confirmar remito
 
 Fuente: `app/modulos/ventas/` · Flujo principal: `POST /api/v1/ventas/pedidos/{id}/confirmar-remito`.
-Actualizado: 2026-08-29.
+Actualizado: 2026-08-30.
 
 Egreso de stock + debe en CxC en la **misma transacción**. Luego publica `ventas.remito.confirmado` (hooks locales no-op; otros módulos pueden suscribirse).
 
@@ -45,15 +45,20 @@ sequenceDiagram
     participant Cliente
     participant Service as VentasService
     participant Param as ContratoParametros
+    participant Clientes as ContratoClientes
+    participant Fiscal as ventas.fiscal
+    participant DAO as VentasDAO
     participant FE as ProveedorFE
     participant ARCA as WSAA/WSFE
 
     Cliente->>Service: confirmar factura
     Service->>Param: obtener_afip
-    alt habilitada
+    alt habilitada y sin CAE previo
+        Service->>Clientes: obtener_fiscal
+        Service->>Fiscal: armar_identidad y validar_emision_fiscal
         Service->>FE: ultimo_autorizado
-        FE-->>Service: nro
-        Service->>FE: solicitar_cae
+        Service->>DAO: max_cbte_nro
+        Service->>FE: solicitar_cae nro max + 1
         alt proveedor afip
             FE->>ARCA: LoginCms + FECAESolicitar
             ARCA-->>FE: CAE
@@ -62,6 +67,7 @@ sequenceDiagram
         end
         FE-->>Service: ResultadoFE
         Note over Service: si rechaza, no confirma
+        Service->>Fiscal: formatear_numero_fiscal y armar_qr
     end
     Service->>Service: commit factura confirmada + CAE
 ```
@@ -78,4 +84,6 @@ sequenceDiagram
 
 ## Contrato público
 
-`ContratoVentas`: métricas, pendientes, top artículos, `obtener_comprobante_cobrable`. Usado por **reporteria** y **cobranzas**.
+`ContratoVentas`: métricas, pendientes, top artículos, `obtener_factura`, `obtener_comprobante_cobrable`. Usado por **reporteria** y **cobranzas**.
+
+Puerto `ProveedorFE` (`puerto.py`): adaptador simulado por defecto; WSAA/WSFE si `VENTAS360_AFIP_PROVEEDOR=afip`. Identidad del emisor en [parametros.md](parametros.md).

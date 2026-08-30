@@ -1,7 +1,7 @@
 # productos — alta
 
 Fuente: `app/modulos/productos/` · Flujo principal: `POST /api/v1/productos`.
-Actualizado: 2026-08-27.
+Actualizado: 2026-08-30.
 
 SKU único. Si `stock > 0`, sincroniza el saldo del depósito default vía contrato (misma TX).
 
@@ -40,4 +40,4 @@ sequenceDiagram
 
 ## Contrato público
 
-`ContratoProductos`: `obtener_producto`, `obtener_por_sku`, `obtener_por_codigo_proveedor`, `listar_activos`, `contar_activos`, `contar_bajo_stock`, `listar_bajo_stock`, `establecer_stock`, `aplicar_costo_lista`, `crear_desde_proveedor`. Usado por **ventas**, **compras**, **precios**, **stock**, **proveedores**, **reporteria**.
+`ContratoProductos`: `obtener_producto`, `obtener_por_sku`, `obtener_por_codigo_barras`, `obtener_por_codigo_proveedor`, `buscar_por_texto`, `listar_activos`, `contar_activos`, `contar_bajo_stock`, `listar_bajo_stock`, `stock_total`, `establecer_stock`, `aplicar_costo_lista`, `crear_desde_proveedor`, `upsert_desde_lista`. Usado por **ventas**, **compras**, **precios**, **stock**, **proveedores**, **reporteria**, **ia**.

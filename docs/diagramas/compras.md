@@ -1,7 +1,7 @@
 # compras — ciclo pedido → remito → factura
 
 Fuente: `app/modulos/compras/` · Permiso: módulo `compras` · Prefijo HTTP: `/api/v1/compras`.
-Actualizado: 2026-08-28.
+Actualizado: 2026-08-30.
 
 El módulo registra **cómo el comercio compra**. Un comprobante es un `pedido_compra`, un `remito_compra` o una `factura_compra`. El catálogo (SKU propio) vive en **productos**; la lista del proveedor vive en **proveedores**. Compras los usa, no los crea.
 
@@ -142,10 +142,43 @@ Errores de negocio → HTTP **422** (`ReglaDeNegocioViolada`).
 ## Contratos que consume
 
 - `ContratoProveedores`: `existe_proveedor`, `obtener_item`
-- `ContratoProductos`: `obtener_producto`
+- `ContratoProductos`: `obtener_producto`, `listar_activos`, `obtener_por_codigo_barras`
 - `ContratoStock`: `ingresar`
 - `ContratoCxp`: `registrar_debe`
 - `ContratoParametros`: `obtener_negocio` (IVA)
+
+## Parsear foto de remito
+
+`POST /compras/remitos/parsear` (multipart JPEG/PNG/WebP). No persiste: el front crea el remito después.
+
+```mermaid
+sequenceDiagram
+    participant Cliente
+    participant Router as compras.router
+    participant Service as ComprasService
+    participant Prov as ContratoProveedores
+    participant Parser as PuertoParserRemitoVision
+    participant Prod as ContratoProductos
+
+    Cliente->>Router: POST /compras/remitos/parsear archivo
+    Router->>Service: parsear_remito_foto
+    Service->>Service: validar_imagen_remito
+    alt hay proveedor_id
+        Service->>Prov: existe_proveedor
+    end
+    Service->>Parser: parsear bytes
+    Note over Parser: mock o Anthropic Haiku vision
+    Parser-->>Service: RemitoExtraido
+    Service->>Prod: listar_activos
+    loop lineas con codigo de barras
+        Service->>Prod: obtener_por_codigo_barras
+    end
+    Service->>Service: matchear_remito SKU o nombre
+    Service-->>Router: ParsearRemitoResponse
+    Router-->>Cliente: 200
+```
+
+`VENTAS360_REMITO_PARSE_MODO`: `mock`, `anthropic` o `auto` (Anthropic si hay API key).
 
 Lista Excel, alta de SKU y vínculo ítem→artículo: ver [proveedores.md](proveedores.md).
 
