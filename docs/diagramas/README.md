@@ -4,7 +4,7 @@ Cada módulo tiene un diagrama del **flujo principal** (no el CRUD de listar).
 Las capas siguen `router → service → BO + DAO`; el **commit** ocurre solo en el service.
 La comunicación entre módulos es por `contrato.py` (síncrona) o `EventoDominio` (asíncrona).
 
-Prefijo HTTP: `/api/v1`. Actualizado: **2026-08-29**.
+Prefijo HTTP: `/api/v1`. Actualizado: **2026-08-30**.
 
 ## Cómo mantenerlos
 
@@ -34,3 +34,4 @@ Al cambiar `router.py`, `service.py`, `contrato.py` o `eventos.py` de un módulo
 | bancos | Acreditar, cartera de cheques y depositar | [bancos.md](bancos.md) |
 | parametros | Guardar negocio | [parametros.md](parametros.md) |
 | reporteria | KPIs del dashboard | [reporteria.md](reporteria.md) |
+| ia | Interpretar mostrador + resumen / webhook n8n | [ia.md](ia.md) |
