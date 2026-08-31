@@ -1,7 +1,7 @@
 # caja — ingreso y cierre
 
 Fuente: `app/modulos/caja/` · Flujos: contrato `registrar_ingreso` (cobranzas), `POST /api/v1/caja/movimientos` y `POST /api/v1/caja/cerrar`.
-Actualizado: 2026-08-27.
+Actualizado: 2026-08-31.
 
 El contrato es idempotente por referencia y **no commitea**. El alta HTTP exige caja abierta ese día. El cierre compara esperado vs contado en efectivo, cheques y tarjetas.
 
@@ -85,4 +85,4 @@ sequenceDiagram
 | POST | `/caja/cerrar` | `cerrar_caja` |
 | POST | `/caja/movimientos` | `crear_movimiento_caja` |
 
-`ContratoCaja`: `registrar_ingreso`, `registrar_egreso`. Usado por **cobranzas**.
+`ContratoCaja`: `registrar_ingreso`, `registrar_egreso`. Usado por **cobranzas** y **pagos**.
