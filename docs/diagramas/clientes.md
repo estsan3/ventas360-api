@@ -1,7 +1,7 @@
 # clientes — alta
 
 Fuente: `app/modulos/clientes/` · Flujo principal: `POST /api/v1/clientes`.
-Actualizado: 2026-08-27.
+Actualizado: 2026-08-31.
 
 Valida email único, datos comerciales, vendedor (auth) y zona (IDs débiles).
 
@@ -40,4 +40,4 @@ sequenceDiagram
 
 ## Contrato público
 
-`ContratoClientes`: `existe_cliente`, `contar_activos`, `nombres_por_ids`. Usado por **ventas**, **cxc**, **cobranzas**, **reporteria**.
+`ContratoClientes`: `existe_cliente`, `contar_activos`, `nombres_por_ids`, `obtener_fiscal`, `buscar_por_texto`. Usado por **ventas** (identidad ARCA), **cxc**, **cobranzas**, **reporteria**, **ia**.
