@@ -34,3 +34,4 @@ Al cambiar `router.py`, `service.py`, `contrato.py` o `eventos.py` de un módulo
 | bancos | Acreditar, cartera de cheques y depositar | [bancos.md](bancos.md) |
 | parametros | Guardar negocio | [parametros.md](parametros.md) |
 | reporteria | KPIs del dashboard | [reporteria.md](reporteria.md) |
+| ia | Mostrador, acciones del día y webhook n8n | [ia.md](ia.md) |

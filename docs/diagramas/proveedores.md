@@ -1,7 +1,7 @@
 # proveedores — importar lista Excel
 
 Fuente: `app/modulos/proveedores/` · Flujo principal: `POST /api/v1/proveedores/{id}/listas/importar`.
-Actualizado: 2026-08-28.
+Actualizado: 2026-08-29.
 
 Parsea `.xlsx` y **persiste la lista del proveedor** (`proveedores_lista_item`). **No crea artículos** del catálogo.
 
@@ -63,4 +63,4 @@ sequenceDiagram
 
 ## Contrato público
 
-`ContratoProveedores.existe_proveedor`, `obtener_item`, `obtener_item_por_id`. Usado por **compras**. El ciclo comercial (pedido → remito → factura) está en [compras.md](compras.md).
+`ContratoProveedores.existe_proveedor`, `obtener_item`, `obtener_item_por_id`. Usado por **compras** y **pagos**. El ciclo comercial (pedido → remito → factura) está en [compras.md](compras.md).

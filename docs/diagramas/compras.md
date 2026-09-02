@@ -1,7 +1,7 @@
 # compras — ciclo pedido → remito → factura
 
 Fuente: `app/modulos/compras/` · Permiso: módulo `compras` · Prefijo HTTP: `/api/v1/compras`.
-Actualizado: 2026-08-28.
+Actualizado: 2026-08-29.
 
 El módulo registra **cómo el comercio compra**. Un comprobante es un `pedido_compra`, un `remito_compra` o una `factura_compra`. El catálogo (SKU propio) vive en **productos**; la lista del proveedor vive en **proveedores**. Compras los usa, no los crea.
 
@@ -125,6 +125,36 @@ sequenceDiagram
     Router-->>Cliente: 200
 ```
 
+## Parsear foto de remito
+
+No persiste. El cliente usa el JSON para armar `POST /compras` de tipo `remito_compra`. Puerto `PuertoParserRemitoVision` (Anthropic o mock).
+
+```mermaid
+sequenceDiagram
+    participant Cliente
+    participant Router as compras.router
+    participant Service as ComprasService
+    participant Parser as PuertoParserRemitoVision
+    participant Prov as ContratoProveedores
+    participant Prod as ContratoProductos
+
+    Cliente->>Router: POST /compras/remitos/parsear JPEG PNG o WebP
+    Router->>Service: parsear_remito_foto
+    Service->>Service: validar_imagen_remito
+    opt proveedor_id
+        Service->>Prov: existe_proveedor
+    end
+    Service->>Parser: parsear bytes
+    Parser-->>Service: numero, fecha, lineas extraidas
+    Service->>Prod: listar_activos
+    loop lineas con codigo de barras
+        Service->>Prod: obtener_por_codigo_barras
+    end
+    Service->>Service: matchear_remito barras SKU o nombre
+    Service-->>Router: ParsearRemitoResponse
+    Router-->>Cliente: 200
+```
+
 ## Endpoints
 
 | Método | Ruta | operation_id | Qué hace |
@@ -142,7 +172,7 @@ Errores de negocio → HTTP **422** (`ReglaDeNegocioViolada`).
 ## Contratos que consume
 
 - `ContratoProveedores`: `existe_proveedor`, `obtener_item`
-- `ContratoProductos`: `obtener_producto`
+- `ContratoProductos`: `obtener_producto`, `listar_activos`, `obtener_por_codigo_barras`
 - `ContratoStock`: `ingresar`
 - `ContratoCxp`: `registrar_debe`
 - `ContratoParametros`: `obtener_negocio` (IVA)
