@@ -1,7 +1,7 @@
 # Flujo transversal — request autenticado
 
-Fuente: `app/core/dependencias.py`, `app/modulos/tenants/dependencias.py`, `app/core/eventos.py`.
-Actualizado: 2026-08-26.
+Fuente: `app/core/dependencias.py`, `app/modulos/tenants/dependencias.py`, `app/modulos/ia/dependencias.py`, `app/core/eventos.py`.
+Actualizado: 2026-08-31.
 
 Casi todos los endpoints de comercio exigen cookie/Bearer JWT **y** que el Host sea el subdominio del tenant del usuario. El `tenant_id` se fija en contexto (`usando_tenant`) para filtrar filas sin ForeignKey entre módulos.
 
@@ -57,6 +57,10 @@ sequenceDiagram
     Service-)Bus: EventoDominio modulo.entidad.accion
     Service-->>Router: Response
 ```
+
+## Excepción: webhook n8n
+
+`GET /api/v1/ai/webhook/resumen-dia` no usa JWT. Autentica con `X-Ventas360-Webhook-Secret` y fija el tenant con `X-Tenant-Slug` (`ia.dependencias`). Ver [ia.md](ia.md).
 
 ## Convenciones
 
