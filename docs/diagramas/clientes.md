@@ -1,7 +1,7 @@
 # clientes — alta
 
 Fuente: `app/modulos/clientes/` · Flujo principal: `POST /api/v1/clientes`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-09-05.
 
 Valida email único, datos comerciales, vendedor (auth) y zona (IDs débiles).
 
@@ -36,7 +36,7 @@ sequenceDiagram
 | GET | `/clientes` | `listar_clientes` (paginado) |
 | GET | `/clientes/{id}` | `obtener_cliente` |
 | PUT | `/clientes/{id}` | `actualizar_cliente` |
-| PATCH | `/clientes/{id}` | `desactivar_cliente` |
+| PATCH | `/clientes/{id}/desactivar` | `desactivar_cliente` |
 
 ## Contrato público
 

@@ -1,7 +1,7 @@
 # precios — upsert artículo en lista
 
 Fuente: `app/modulos/precios/` · Flujo principal: `PUT /api/v1/precios/articulos`.
-Actualizado: 2026-08-26.
+Actualizado: 2026-09-05.
 
 Crea o actualiza el precio de un artículo en una lista. La resolución de venta (lista default → catálogo) la consume **ventas** vía `ContratoPrecios.obtener_precio`.
 
@@ -39,7 +39,10 @@ Lista default con override → si no, `producto.precio` del catálogo. `cliente_
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET/POST/PUT/PATCH | `/precios/listas` | CRUD listas |
+| GET | `/precios/listas` | `listar_listas_precio` |
+| POST | `/precios/listas` | `crear_lista_precio` |
+| PUT | `/precios/listas/{lista_id}` | `actualizar_lista_precio` |
+| PATCH | `/precios/listas/{lista_id}/desactivar` | `desactivar_lista_precio` |
 | GET | `/precios/listas/{id}/articulos` | `listar_precios_lista` |
 | GET | `/precios/resolver` | `resolver_precio` |
 

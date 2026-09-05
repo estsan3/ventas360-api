@@ -1,7 +1,7 @@
 # auth — login
 
 Fuente: `app/modulos/auth/` · Flujo principal: `POST /api/v1/auth/login`.
-Actualizado: 2026-08-26.
+Actualizado: 2026-09-05.
 
 Valida credenciales, que el Host coincida con el tenant del usuario (o plataforma para `superadmin`) y emite JWT en cookie httpOnly + body.
 
@@ -39,8 +39,12 @@ sequenceDiagram
 |--------|------|----------------|
 | GET | `/auth/me` | `obtener_perfil` |
 | POST | `/auth/logout` | `logout` (borra cookie) |
-| GET/POST/DELETE | `/usuarios` | listar / crear / eliminar |
-| GET/POST/DELETE | `/catalogos/vendedores` | vendedores (usuarios rol vendedor) |
+| GET | `/usuarios` | `listar_usuarios` |
+| POST | `/usuarios` | `crear_usuario` |
+| DELETE | `/usuarios/{usuario_id}` | `eliminar_usuario` |
+| GET | `/catalogos/vendedores` | `listar_vendedores` |
+| POST | `/catalogos/vendedores` | `crear_vendedor` |
+| DELETE | `/catalogos/vendedores/{usuario_id}` | `eliminar_vendedor` |
 
 ## Contrato público
 

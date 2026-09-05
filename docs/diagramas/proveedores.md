@@ -1,7 +1,7 @@
 # proveedores — importar lista Excel
 
 Fuente: `app/modulos/proveedores/` · Flujo principal: `POST /api/v1/proveedores/{id}/listas/importar`.
-Actualizado: 2026-08-28.
+Actualizado: 2026-09-05.
 
 Parsea `.xlsx` y **persiste la lista del proveedor** (`proveedores_lista_item`). **No crea artículos** del catálogo.
 
@@ -26,7 +26,11 @@ sequenceDiagram
     Service->>Excel: parsear bytes
     Excel-->>Service: filas
     loop cada fila
-        Service->>Productos: obtener_por_codigo_proveedor o sku
+        Service->>DAO: item ya vinculado
+        alt no hay articulo_id
+            Service->>Productos: obtener_por_codigo_proveedor
+            Service->>Productos: obtener_por_sku
+        end
         alt no dry_run
             Service->>DAO: upsert ListaProveedorItem
             alt hay artículo en catálogo
@@ -56,7 +60,7 @@ sequenceDiagram
 | GET | `/proveedores/{id}` | `obtener_proveedor` |
 | POST | `/proveedores` | `crear_proveedor` |
 | PUT | `/proveedores/{id}` | `actualizar_proveedor` |
-| PATCH | `/proveedores/{id}` | `desactivar_proveedor` |
+| PATCH | `/proveedores/{id}/desactivar` | `desactivar_proveedor` |
 | GET | `/proveedores/{id}/listas/items` | `listar_items_lista_proveedor` |
 | POST | `/proveedores/{id}/listas/items/{item_id}/alta` | `alta_articulo_desde_lista` |
 | POST | `/proveedores/{id}/listas/items/{item_id}/vincular` | `vincular_item_lista_articulo` |
