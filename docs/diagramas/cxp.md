@@ -1,7 +1,7 @@
 # cxp — registrar debe (contrato)
 
 Fuente: `app/modulos/cxp/` · Flujo principal: `ContratoCxp.registrar_debe` (invocado por compras al confirmar/facturar).
-Actualizado: 2026-08-31.
+Actualizado: 2026-09-05.
 
 Sin endpoints de escritura HTTP: el debe lo escribe **compras**. El router solo consulta saldos y estado de cuenta. Idempotente por referencia; sin commit en el contrato.
 
@@ -34,7 +34,7 @@ sequenceDiagram
     participant DAO as CxpDAO
     participant BO as CxpBO
 
-    Cliente->>Router: GET /cxp/proveedores/{id}/estado-cuenta
+    Cliente->>Router: GET /cxp/proveedores/{proveedor_id}
     Router->>Service: estado_cuenta
     Service->>DAO: listar_por_proveedor + totales
     Service->>BO: calcular_saldo debe haber
@@ -47,6 +47,6 @@ sequenceDiagram
 | Método | Ruta | operation_id |
 |--------|------|----------------|
 | GET | `/cxp/saldos` | `listar_saldos_cxp` |
-| GET | `/cxp/proveedores/{id}` | `estado_cuenta_proveedor` |
+| GET | `/cxp/proveedores/{proveedor_id}` | `estado_cuenta_proveedor` |
 
 `ContratoCxp` también expone `registrar_haber` y `saldo_proveedor`. El haber operativo lo escribe **pagos** (`referencia_tipo` `pago_proveedor`). Ver [pagos.md](pagos.md).

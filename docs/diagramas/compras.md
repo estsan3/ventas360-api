@@ -1,7 +1,7 @@
 # compras — ciclo pedido → remito → factura
 
 Fuente: `app/modulos/compras/` · Permiso: módulo `compras` · Prefijo HTTP: `/api/v1/compras`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-09-05.
 
 El módulo registra **cómo el comercio compra**. Un comprobante es un `pedido_compra`, un `remito_compra` o una `factura_compra`. El catálogo (SKU propio) vive en **productos**; la lista del proveedor vive en **proveedores**. Compras los usa, no los crea.
 
@@ -122,6 +122,34 @@ sequenceDiagram
     Service->>Cxp: registrar_debe proveedor, total
     Service->>Service: commit factura confirmada
     Service-)Bus: compras.factura_compra.creada
+    Router-->>Cliente: 200
+```
+
+## Factura de compra directa (sin remito)
+
+`POST /compras` tipo `factura_compra` sin `origen_id`, luego `POST /compras/{id}/confirmar`. Ingresa stock **y** imputa CxP. Si la factura nace de un remito (`origen_id`), al confirmar solo imputa CxP.
+
+```mermaid
+sequenceDiagram
+    participant Cliente
+    participant Router as compras.router
+    participant Service as ComprasService
+    participant Stock as ContratoStock
+    participant Cxp as ContratoCxp
+    participant Bus as bus_eventos
+
+    Cliente->>Router: POST /compras tipo factura_compra borrador
+    Router->>Service: crear
+    Cliente->>Router: POST /compras/{id}/confirmar
+    Router->>Service: confirmar
+    alt sin origen_id
+        loop cada linea
+            Service->>Stock: ingresar articulo, deposito, cantidad
+        end
+    end
+    Service->>Cxp: registrar_debe proveedor, total
+    Service->>Service: commit
+    Service-)Bus: compras.factura_compra.confirmado
     Router-->>Cliente: 200
 ```
 

@@ -4,7 +4,7 @@ Cada módulo tiene un diagrama del **flujo principal** (no el CRUD de listar).
 Las capas siguen `router → service → BO + DAO`; el **commit** ocurre solo en el service.
 La comunicación entre módulos es por `contrato.py` (síncrona) o `EventoDominio` (asíncrona).
 
-Prefijo HTTP: `/api/v1`. Actualizado: **2026-09-01**.
+Prefijo HTTP: `/api/v1`. Actualizado: **2026-09-05**.
 
 ## Cómo mantenerlos
 

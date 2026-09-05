@@ -1,7 +1,7 @@
 # tenants — crear comercio
 
 Fuente: `app/modulos/tenants/` · Flujo principal: `POST /api/v1/tenants` (host `admin.*`, rol `superadmin`).
-Actualizado: 2026-08-26.
+Actualizado: 2026-09-05.
 
 Alta de comercio + primer administrador + matriz de permisos default, **una transacción**.
 
@@ -54,10 +54,13 @@ sequenceDiagram
 
 | Método | Ruta | Quién | operation_id |
 |--------|------|-------|----------------|
+| GET | `/tenants/contexto` | público (Host) | `contexto_tenant_host` |
 | GET | `/tenants` | superadmin | `listar_tenants` |
-| GET/PATCH | `/tenants/{id}` | superadmin | obtener / actualizar |
-| PATCH | `/tenants/{id}/usuarios/{uid}/password` | superadmin | `cambiar_password_usuario_tenant` |
-| GET/PUT | `/tenants/permisos` | comercio + módulo configuracion | matriz de permisos |
+| GET | `/tenants/{tenant_id}` | superadmin | `obtener_tenant` |
+| PATCH | `/tenants/{tenant_id}` | superadmin | `actualizar_tenant` |
+| PATCH | `/tenants/{tenant_id}/usuarios/{usuario_id}/password` | superadmin | `cambiar_password_usuario_tenant` |
+| GET | `/tenants/permisos` | comercio + módulo configuracion | `obtener_matriz_permisos` |
+| PUT | `/tenants/permisos` | comercio + módulo configuracion | `actualizar_matriz_permisos` |
 
 ## Contrato público
 
