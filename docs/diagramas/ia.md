@@ -1,7 +1,7 @@
 # ia — interpretar mostrador y resumen del día
 
 Fuente: `app/modulos/ia/` · Prefijo HTTP: `/api/v1/ai`.
-Actualizado: 2026-09-01.
+Actualizado: 2026-09-07.
 
 El módulo no persiste ni publica eventos. Interpreta texto del mostrador, arma acciones del día y un resumen narrativo. El webhook de n8n replica el resumen **sin JWT** (secreto + slug de tenant).
 
@@ -9,7 +9,7 @@ No hay `contrato.py`. Hoy `IaService` consume `ReporteriaService` y `ComprasDAO`
 
 ## Interpretar mostrador (flujo principal)
 
-`POST /ai/mostrador/interpretar` · JWT + módulo `mostrador`. Requiere `VENTAS360_AI_HABILITADA`.
+`POST /ai/mostrador/interpretar` · JWT + módulo `mostrador`. Requiere `VENTAS360_AI_HABILITADA`. El modo LLM usa la misma flag que el parseo de remitos: `VENTAS360_REMITO_PARSE_MODO` distinto de `mock` **y** `anthropic_api_key`.
 
 ```mermaid
 sequenceDiagram
@@ -22,7 +22,7 @@ sequenceDiagram
 
     Cliente->>Router: POST /ai/mostrador/interpretar texto
     Router->>Service: interpretar_mostrador
-    alt anthropic_api_key y modo no mock
+    alt anthropic_api_key y remito_parse_modo != mock
         Service->>LLM: llamar_haiku_texto PROMPT_MOSTRADOR
         LLM-->>Service: JSON extraido
     else
