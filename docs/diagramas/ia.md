@@ -1,7 +1,7 @@
 # ia — interpretar mostrador y resumen del día
 
 Fuente: `app/modulos/ia/` · Prefijo HTTP: `/api/v1/ai`.
-Actualizado: 2026-09-01.
+Actualizado: 2026-09-11.
 
 El módulo no persiste ni publica eventos. Interpreta texto del mostrador, arma acciones del día y un resumen narrativo. El webhook de n8n replica el resumen **sin JWT** (secreto + slug de tenant).
 
@@ -22,7 +22,7 @@ sequenceDiagram
 
     Cliente->>Router: POST /ai/mostrador/interpretar texto
     Router->>Service: interpretar_mostrador
-    alt anthropic_api_key y modo no mock
+    alt anthropic_api_key y remito_parse_modo != mock
         Service->>LLM: llamar_haiku_texto PROMPT_MOSTRADOR
         LLM-->>Service: JSON extraido
     else
@@ -56,7 +56,7 @@ sequenceDiagram
     Service->>Reporteria: obtener_kpis
     Service->>Compras: listar remito_compra borrador
     Service->>BO: construir_acciones
-    alt resumen con narrativa y anthropic
+    alt narrativa y remito_parse_modo != mock
         Service->>LLM: llamar_haiku_texto PROMPT_RESUMEN
     else narrativa mock
         Service->>BO: narrativa_mock
@@ -105,4 +105,4 @@ Query `narrativa=true` (default) en los dos resúmenes.
 - `ContratoClientes.buscar_por_texto`
 - `ContratoProductos.listar_activos`
 
-Puerto de texto: `adaptadores/texto.py` (Haiku). Visión de remitos de compra está en [compras.md](compras.md), no acá.
+Puerto de texto: `adaptadores/texto.py` (Haiku). El LLM corre si hay `VENTAS360_ANTHROPIC_API_KEY` y `VENTAS360_REMITO_PARSE_MODO != mock`. Visión de remitos de compra está en [compras.md](compras.md), no acá.
