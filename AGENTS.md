@@ -7,7 +7,8 @@ Seguí SIEMPRE estas reglas. Si una solicitud las viola, proponé el diseño cor
 ## Stack y contexto
 
 - Python / FastAPI monolito modular (preparado para microservicios)
-- SQLAlchemy 2.0 async, SQLite (dev) / PostgreSQL (prod)
+- SQLAlchemy 2.0 async, SQLite (dev) / PostgreSQL (prod: db `appdb`, schema `ventas`)
+- Flyway del producto (`flyway/`, `flyway.schemas=ventas`) corre en Pre-Deploy, **no** en la app. `create_all` sigue activo; se conservan prefijos de tabla. Ver `docs/FLYWAY.md`.
 - JWT + roles (cookie httpOnly y/o Bearer); errores de negocio unificados
 - MCP opcional (`operation_id` en endpoints para tools de agentes)
 - Repo: `ventas360-api` · Prefijo env: `VENTAS360_*`

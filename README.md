@@ -32,6 +32,20 @@ Variables con prefijo `VENTAS360_` (ver `.env.example`):
 | `VENTAS360_MCP_HABILITADO` | `false` |
 | `VENTAS360_AFIP_PROVEEDOR` | `simulado` (`afip` = WSAA + WSFE real) |
 
+PostgreSQL de producto: database `appdb`, schema `ventas`, roles `ventas_migrator` (Flyway) y `ventas_app` (API). El schema **no** va en la URL (`search_path` lo setea el rol). Ver [docs/FLYWAY.md](docs/FLYWAY.md).
+
+## Flyway (schema `ventas`)
+
+Las migraciones viven en `flyway/sql` y corren **fuera** de la app (Pre-Deploy / `scripts/flyway-migrate.sh`). `create_all` sigue activo. Los prefijos de tabla se conservan (`ventas_pedido`, …) dentro del schema `ventas`. Sin undo.
+
+```bash
+docker compose up -d db
+./scripts/bootstrap-roles.sh
+./scripts/flyway-migrate.sh
+```
+
+O: `docker compose --profile flyway run --rm flyway-bootstrap` y `… run --rm flyway`.
+
 ## Arquitectura
 
 Cada módulo sigue: `router → service → bo + dao + models + schemas` (+ `contrato.py` si otros módulos lo consumen).
