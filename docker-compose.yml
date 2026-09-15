@@ -54,5 +54,43 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # Profile opcional: bootstrap de roles + Flyway migrate (DB appdb, schema ventas).
+  #   docker compose up -d db
+  #   docker compose --profile flyway run --rm flyway-bootstrap
+  #   docker compose --profile flyway run --rm flyway
+  flyway-bootstrap:
+    image: postgres:17-alpine
+    profiles: ["flyway"]
+    environment:
+      PGHOST: db
+      PGPORT: "5432"
+      PGUSER: ventas360
+      PGPASSWORD: ventas360
+      ADMIN_DB: postgres
+      APP_DB: appdb
+      VENTAS_MIGRATOR_PASSWORD: ${VENTAS_MIGRATOR_PASSWORD:-ventas_migrator}
+      VENTAS_APP_PASSWORD: ${VENTAS_APP_PASSWORD:-ventas_app}
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["/bin/sh", "/scripts/bootstrap-roles.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  flyway:
+    image: flyway/flyway:11
+    profiles: ["flyway"]
+    volumes:
+      - ./flyway/sql:/flyway/sql
+      - ./flyway/conf:/flyway/conf
+    environment:
+      FLYWAY_URL: jdbc:postgresql://db:5432/appdb
+      FLYWAY_USER: ventas_migrator
+      FLYWAY_PASSWORD: ${VENTAS_MIGRATOR_PASSWORD:-ventas_migrator}
+    command: ["-connectRetries=60", "migrate"]
+    depends_on:
+      flyway-bootstrap:
+        condition: service_completed_successfully
+
 volumes:
   ventas360-pgdata:
