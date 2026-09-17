@@ -1,7 +1,7 @@
 # clientes — alta
 
 Fuente: `app/modulos/clientes/` · Flujo principal: `POST /api/v1/clientes`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-09-17.
 
 Valida email único, datos comerciales, vendedor (auth) y zona (IDs débiles).
 
@@ -19,10 +19,14 @@ sequenceDiagram
     Router->>Service: crear(datos)
     Service->>DAO: buscar_por_email
     Service->>BO: validar_alta y validar_datos_comerciales
-    Service->>Auth: existe_usuario(vendedor_id)
-    Auth-->>Service: bool
-    Service->>Zonas: existe_zona(zona_id)
-    Zonas-->>Service: bool
+    opt vendedor_id
+        Service->>Auth: existe_usuario(vendedor_id)
+        Auth-->>Service: bool
+    end
+    opt zona_id
+        Service->>Zonas: existe_zona(zona_id)
+        Zonas-->>Service: bool
+    end
     Service->>DAO: guardar Cliente
     Service->>Service: commit
     Service-->>Router: ClienteResponse
@@ -35,8 +39,9 @@ sequenceDiagram
 |--------|------|----------------|
 | GET | `/clientes` | `listar_clientes` (paginado) |
 | GET | `/clientes/{id}` | `obtener_cliente` |
+| POST | `/clientes` | `crear_cliente` |
 | PUT | `/clientes/{id}` | `actualizar_cliente` |
-| PATCH | `/clientes/{id}` | `desactivar_cliente` |
+| PATCH | `/clientes/{id}/desactivar` | `desactivar_cliente` |
 
 ## Contrato público
 
