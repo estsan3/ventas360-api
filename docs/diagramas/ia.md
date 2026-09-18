@@ -1,7 +1,7 @@
 # ia — interpretar mostrador y resumen del día
 
 Fuente: `app/modulos/ia/` · Prefijo HTTP: `/api/v1/ai`.
-Actualizado: 2026-09-01.
+Actualizado: 2026-09-18.
 
 El módulo no persiste ni publica eventos. Interpreta texto del mostrador, arma acciones del día y un resumen narrativo. El webhook de n8n replica el resumen **sin JWT** (secreto + slug de tenant).
 
@@ -22,7 +22,7 @@ sequenceDiagram
 
     Cliente->>Router: POST /ai/mostrador/interpretar texto
     Router->>Service: interpretar_mostrador
-    alt anthropic_api_key y modo no mock
+    alt anthropic_api_key y remito_parse_modo no mock
         Service->>LLM: llamar_haiku_texto PROMPT_MOSTRADOR
         LLM-->>Service: JSON extraido
     else
@@ -38,6 +38,8 @@ sequenceDiagram
 ```
 
 No crea el comprobante: el front arma el POST a **ventas** con `cliente_id` y `producto_id` ya resueltos.
+
+El modo real usa `VENTAS360_REMITO_PARSE_MODO` (`mock` fuerza mock; `auto`/`anthropic` llama a Haiku si hay API key). Lo mismo aplica a la narrativa del resumen.
 
 ## Acciones y resumen del día
 
@@ -56,7 +58,7 @@ sequenceDiagram
     Service->>Reporteria: obtener_kpis
     Service->>Compras: listar remito_compra borrador
     Service->>BO: construir_acciones
-    alt resumen con narrativa y anthropic
+    alt resumen con narrativa, anthropic_api_key y remito_parse_modo no mock
         Service->>LLM: llamar_haiku_texto PROMPT_RESUMEN
     else narrativa mock
         Service->>BO: narrativa_mock
