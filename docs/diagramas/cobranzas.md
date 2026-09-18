@@ -1,7 +1,7 @@
 # cobranzas — crear recibo
 
 Fuente: `app/modulos/cobranzas/` · Flujo principal: `POST /api/v1/cobranzas/recibos`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-09-18.
 
 Valida imputaciones contra comprobantes cobrables (remito/factura), registra **un** haber en CxC (referencia `recibo`) e impacta tesorería **por cada línea de medio**.
 
@@ -55,5 +55,6 @@ sequenceDiagram
 |--------|------|----------------|
 | GET | `/cobranzas/recibos` | `listar_recibos` |
 | GET | `/cobranzas/recibos/{id}` | `obtener_recibo` |
+| POST | `/cobranzas/recibos` | `crear_recibo` |
 
 No hay `contrato.py` de cobranzas: el módulo orquesta a otros.
