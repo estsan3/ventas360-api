@@ -1,7 +1,7 @@
 # ia — interpretar mostrador y resumen del día
 
 Fuente: `app/modulos/ia/` · Prefijo HTTP: `/api/v1/ai`.
-Actualizado: 2026-09-01.
+Actualizado: 2026-09-19.
 
 El módulo no persiste ni publica eventos. Interpreta texto del mostrador, arma acciones del día y un resumen narrativo. El webhook de n8n replica el resumen **sin JWT** (secreto + slug de tenant).
 
@@ -22,7 +22,7 @@ sequenceDiagram
 
     Cliente->>Router: POST /ai/mostrador/interpretar texto
     Router->>Service: interpretar_mostrador
-    alt anthropic_api_key y modo no mock
+    alt anthropic_api_key y remito_parse_modo no mock
         Service->>LLM: llamar_haiku_texto PROMPT_MOSTRADOR
         LLM-->>Service: JSON extraido
     else
@@ -39,7 +39,33 @@ sequenceDiagram
 
 No crea el comprobante: el front arma el POST a **ventas** con `cliente_id` y `producto_id` ya resueltos.
 
-## Acciones y resumen del día
+El modo real usa `VENTAS360_REMITO_PARSE_MODO` (`mock` fuerza mock; `auto`/`anthropic` llama a Haiku si hay API key). Lo mismo aplica a la narrativa del resumen.
+
+## Acciones del día
+
+`GET /ai/acciones` · JWT + módulo `inicio`. Solo KPIs + reglas de BO. **No** llama al LLM.
+
+```mermaid
+sequenceDiagram
+    participant Cliente
+    participant Router as ia.router
+    participant Service as IaService
+    participant Reporteria as ReporteriaService
+    participant Compras as ComprasDAO
+    participant BO as ia.bo
+
+    Cliente->>Router: GET /ai/acciones
+    Router->>Service: acciones_del_dia
+    Service->>Reporteria: obtener_kpis
+    Service->>Compras: listar remito_compra borrador
+    Service->>BO: construir_acciones
+    Service-->>Router: AccionesDiaResponse
+    Router-->>Cliente: 200
+```
+
+## Resumen del día
+
+`GET /ai/resumen-dia` · JWT + módulo `inicio`. Reusa KPIs y `construir_acciones` (títulos destacados). La narrativa (query `narrativa=true` por defecto) sí puede ir a Haiku.
 
 ```mermaid
 sequenceDiagram
@@ -51,17 +77,17 @@ sequenceDiagram
     participant BO as ia.bo
     participant LLM as adaptador texto
 
-    Cliente->>Router: GET /ai/acciones o /ai/resumen-dia
-    Router->>Service: acciones_del_dia o resumen_dia
+    Cliente->>Router: GET /ai/resumen-dia
+    Router->>Service: resumen_dia
     Service->>Reporteria: obtener_kpis
     Service->>Compras: listar remito_compra borrador
     Service->>BO: construir_acciones
-    alt resumen con narrativa y anthropic
+    alt narrativa y anthropic_api_key y remito_parse_modo no mock
         Service->>LLM: llamar_haiku_texto PROMPT_RESUMEN
     else narrativa mock
         Service->>BO: narrativa_mock
     end
-    Service-->>Router: AccionesDiaResponse o ResumenDiaResponse
+    Service-->>Router: ResumenDiaResponse
     Router-->>Cliente: 200
 ```
 

@@ -1,7 +1,7 @@
 # reporteria — KPIs
 
 Fuente: `app/modulos/reporteria/` · Flujo principal: `GET /api/v1/reporteria/kpis`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-09-19.
 
 Solo lectura: agrega métricas vía contratos. No persiste ni publica eventos. Un comercio nuevo recibe ceros reales (sin números de demo).
 
@@ -19,7 +19,7 @@ sequenceDiagram
     Cliente->>Router: GET /reporteria/kpis
     Router->>Service: obtener_kpis
     Service->>Clientes: contar_activos
-    Service->>Productos: contar_activos y bajo_stock
+    Service->>Productos: contar_activos, contar_bajo_stock, listar_bajo_stock
     Service->>Ventas: metricas_dia, metricas_mes, pendientes
     Service->>Ventas: top_articulos, serie_semana, listar_recientes
     Service->>Param: obtener_negocio
@@ -31,6 +31,12 @@ sequenceDiagram
 ```
 
 Incluye: ventas día/mes, ticket promedio, pendientes, moneda, top artículos, serie de la semana, últimos comprobantes, reposición, CxC a cobrar/vencido.
+
+## Endpoints
+
+| Método | Ruta | operation_id |
+|--------|------|----------------|
+| GET | `/reporteria/kpis` | `obtener_kpis` |
 
 Hoy `saldos_agrupados` se lee del DAO de cxc (el contrato público no expone ese agregado).
 

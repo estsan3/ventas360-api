@@ -1,7 +1,7 @@
 # tenants — crear comercio
 
 Fuente: `app/modulos/tenants/` · Flujo principal: `POST /api/v1/tenants` (host `admin.*`, rol `superadmin`).
-Actualizado: 2026-08-26.
+Actualizado: 2026-09-19.
 
 Alta de comercio + primer administrador + matriz de permisos default, **una transacción**.
 
@@ -22,7 +22,7 @@ sequenceDiagram
     Service->>DAO: guardar Tenant
     Service->>Auth: crear_administrador_inicial
     Auth-->>Service: AdministradorInicial
-    Service->>DAO: permisos default vendedor/encargado
+    Service->>Service: asegurar_permisos_default (usando_tenant)
     Service->>Service: commit
     Service-->>Router: TenantCreadoResponse
     Router-->>Plataforma: 201
@@ -39,9 +39,11 @@ sequenceDiagram
 
     Cliente->>Router: GET /tenants/contexto + Host
     Router->>Service: contexto_desde_host
-    Service->>Service: clasificar_host plataforma vs slug
+    Service->>Service: clasificar_host plataforma, slug o sin_slug
     alt host admin (plataforma)
         Service-->>Router: tipo plataforma
+    else sin slug
+        Service-->>Router: tipo sin_slug
     else slug de comercio
         Service->>DAO: buscar_por_slug
         DAO-->>Service: Tenant o None
@@ -54,11 +56,15 @@ sequenceDiagram
 
 | Método | Ruta | Quién | operation_id |
 |--------|------|-------|----------------|
+| GET | `/tenants/contexto` | público (Host) | `contexto_tenant_host` |
 | GET | `/tenants` | superadmin | `listar_tenants` |
-| GET/PATCH | `/tenants/{id}` | superadmin | obtener / actualizar |
-| PATCH | `/tenants/{id}/usuarios/{uid}/password` | superadmin | `cambiar_password_usuario_tenant` |
-| GET/PUT | `/tenants/permisos` | comercio + módulo configuracion | matriz de permisos |
+| POST | `/tenants` | superadmin | `crear_tenant` |
+| GET | `/tenants/{tenant_id}` | superadmin | `obtener_tenant` |
+| PATCH | `/tenants/{tenant_id}` | superadmin | `actualizar_tenant` |
+| PATCH | `/tenants/{tenant_id}/usuarios/{usuario_id}/password` | superadmin | `cambiar_password_usuario_tenant` |
+| GET | `/tenants/permisos` | comercio + módulo configuracion | `obtener_matriz_permisos` |
+| PUT | `/tenants/permisos` | comercio + módulo configuracion | `actualizar_matriz_permisos` |
 
 ## Contrato público
 
-`ContratoTenants`: `contexto_desde_host`, `modulos_habilitados`. Usado por **auth** (login/perfil).
+`ContratoTenants`: `obtener_por_id`, `obtener_por_slug`, `existe_tenant`, `contexto_desde_host`, `modulos_habilitados`. Usado por **auth** (login/perfil). El webhook n8n de **ia** llama `TenantsService.obtener_por_slug` (mismo proceso, sin contrato).

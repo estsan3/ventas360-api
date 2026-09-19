@@ -1,9 +1,11 @@
 # Flujo transversal — request autenticado
 
 Fuente: `app/core/dependencias.py`, `app/modulos/tenants/dependencias.py`, `app/modulos/ia/dependencias.py`, `app/core/eventos.py`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-09-19.
 
 Casi todos los endpoints de comercio exigen cookie/Bearer JWT **y** que el Host sea el subdominio del tenant del usuario. El `tenant_id` se fija en contexto (`usando_tenant`) para filtrar filas sin ForeignKey entre módulos.
+
+`exigir_usuario_del_comercio` corre en casi todos los routers de comercio. `modulos_habilitados` **no** se consulta en cada request: solo si el endpoint declara `Depends(requerir_modulo(...))`.
 
 ## Request de un comercio
 
@@ -26,8 +28,11 @@ sequenceDiagram
     TenantDAO-->>TenantsSvc: Tenant activo
     TenantsSvc-->>FastAPI: tipo comercio + tenant_id
     FastAPI->>FastAPI: exigir JWT.tenant_id == Host.tenant_id
-    FastAPI->>TenantsSvc: modulos_habilitados(rol)
-    TenantsSvc-->>FastAPI: lista de módulos
+    FastAPI->>FastAPI: usando_tenant(tenant_id)
+    opt endpoint con requerir_modulo
+        FastAPI->>TenantsSvc: modulos_habilitados(tenant_id, rol)
+        TenantsSvc-->>FastAPI: lista de módulos
+    end
     FastAPI->>Router: DTO Request
     Router->>Service: caso de uso
     Service->>DAO: persistir + flush
@@ -58,9 +63,10 @@ sequenceDiagram
     Service-->>Router: Response
 ```
 
-## Excepción: webhook n8n
+## Excepciones sin JWT de comercio
 
-`GET /api/v1/ai/webhook/resumen-dia` no usa JWT. Autentica con `X-Ventas360-Webhook-Secret` y fija el tenant con `X-Tenant-Slug` (`ia.dependencias`). Ver [ia.md](ia.md).
+- `POST /auth/login` y `GET /tenants/contexto` no usan `exigir_usuario_del_comercio`.
+- `GET /api/v1/ai/webhook/resumen-dia` autentica con `X-Ventas360-Webhook-Secret` y fija el tenant con `X-Tenant-Slug` (`ia.dependencias`). Ver [ia.md](ia.md).
 
 ## Convenciones
 
