@@ -1,7 +1,7 @@
 # pagos — pago a proveedor
 
 Fuente: `app/modulos/pagos/` · Flujo principal: `POST /api/v1/pagos`.
-Actualizado: 2026-08-28.
+Actualizado: 2026-09-19.
 
 Espejo de cobranzas. Baja deuda (CxP haber) e impacta tesorería: efectivo → caja, transferencia → banco, cheque de cartera → `entregar_cheque`, cheque propio → `emitir_cheque_propio`.
 
@@ -22,7 +22,7 @@ sequenceDiagram
 
     Cliente->>Router: POST /pagos proveedor, medios
     Router->>Service: crear
-    Service->>BO: validar_medios
+    Service->>BO: normalizar_medios y validar_medios
     Service->>Prov: existe_proveedor
     Service->>DAO: guardar Pago + lineas
     loop cada medio
@@ -40,6 +40,7 @@ sequenceDiagram
     Service->>Service: commit
     Service-)Bus: pagos.pago.creado
     Service-->>Router: PagoResponse
+    Router-->>Cliente: 201
 ```
 
 ## Endpoints
