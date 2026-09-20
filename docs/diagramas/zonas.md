@@ -1,7 +1,7 @@
 # zonas — alta
 
 Fuente: `app/modulos/zonas/` · Flujo principal: `POST /api/v1/zonas`.
-Actualizado: 2026-08-26.
+Actualizado: 2026-09-20.
 
 Catálogo simple: nombre único, código. Sin contratos de entrada; expone `existe_zona` a clientes.
 
@@ -28,10 +28,11 @@ sequenceDiagram
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET | `/zonas` | `listar_zonas` |
+| GET | `/zonas` | `listar_zonas` (paginado) |
 | GET | `/zonas/{id}` | `obtener_zona` |
+| POST | `/zonas` | `crear_zona` |
 | PUT | `/zonas/{id}` | `actualizar_zona` |
-| PATCH | `/zonas/{id}` | `desactivar_zona` |
+| PATCH | `/zonas/{id}/desactivar` | `desactivar_zona` |
 
 ## Contrato público
 
