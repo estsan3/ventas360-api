@@ -1,7 +1,7 @@
 # parametros — guardar negocio
 
 Fuente: `app/modulos/parametros/` · Flujo principal: `PUT /api/v1/parametros`.
-Actualizado: 2026-08-29.
+Actualizado: 2026-09-21.
 
 Claves por tenant (`iva_porcentaje`, `moneda`). El contrato `asignar_numero` lo usan **ventas** (talonario, sin commit propio).
 
@@ -42,10 +42,15 @@ sequenceDiagram
 | Método | Ruta | operation_id |
 |--------|------|----------------|
 | GET | `/parametros` | `obtener_parametros` |
-| GET/PUT | `/parametros/operativos` | sucursal y condiciones de pago |
-| GET/PUT | `/parametros/afip` | identidad fiscal ARCA (emisor) |
-| GET/PUT | `/parametros/talonarios` | `listar_talonarios` / `upsert_talonario` |
-| GET/PUT | `/preferencias` | notificaciones |
+| PUT | `/parametros` | `guardar_parametros` |
+| GET | `/parametros/operativos` | `obtener_parametros_operativos` |
+| PUT | `/parametros/operativos` | `guardar_parametros_operativos` |
+| GET | `/parametros/afip` | `obtener_parametros_afip` |
+| PUT | `/parametros/afip` | `guardar_parametros_afip` |
+| GET | `/parametros/talonarios` | `listar_talonarios` |
+| PUT | `/parametros/talonarios` | `upsert_talonario` |
+| GET | `/preferencias` | `obtener_preferencias` |
+| PUT | `/preferencias` | `guardar_preferencias` |
 | GET | `/parametria/categorias-producto` | `listar_categorias_producto` |
 
 ## Contrato público

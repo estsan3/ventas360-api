@@ -1,9 +1,9 @@
 # productos — alta
 
 Fuente: `app/modulos/productos/` · Flujo principal: `POST /api/v1/productos`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-09-21.
 
-SKU único. Si `stock > 0`, sincroniza el saldo del depósito default vía contrato (misma TX).
+SKU único. Si `stock > 0`, sincroniza el saldo vía `deposito_default_id` (primer depósito activo; no hay flag `es_default` en stock). Si no hay depósito activo, el alta igual confirma y el stock plano queda en el catálogo.
 
 ```mermaid
 sequenceDiagram
@@ -21,8 +21,9 @@ sequenceDiagram
     Service->>DAO: guardar Producto
     alt stock mayor a 0
         Service->>Stock: deposito_default_id
-        Stock-->>Service: deposito_id
-        Service->>Stock: establecer_cantidad articulo, deposito, stock
+        alt hay deposito activo
+            Service->>Stock: establecer_cantidad articulo, deposito, stock
+        end
     end
     Service->>Service: commit
     Service->>Stock: saldo_total_articulo
@@ -34,8 +35,9 @@ sequenceDiagram
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET | `/productos` | `listar_productos` (stock via contrato) |
+| GET | `/productos` | `listar_productos` (paginado; stock via contrato) |
 | GET | `/productos/{id}` | `obtener_producto` |
+| POST | `/productos` | `crear_producto` |
 | PUT | `/productos/{id}` | `actualizar_producto` |
 
 ## Contrato público
