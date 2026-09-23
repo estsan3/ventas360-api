@@ -63,10 +63,10 @@ sequenceDiagram
     participant BO as StockBO
 
     Orquestador->>Stock: egresar o ingresar deposito_id del comprobante
-    Stock->>DAO: buscar_deposito activo
+    Stock->>DAO: buscar_deposito
     Stock->>DAO: buscar_saldo
     Stock->>BO: validar_egreso o validar_ingreso
-    Stock->>DAO: movimiento + saldo
+    Stock->>DAO: movimiento tipo egreso_remito o ingreso
     Stock-->>Orquestador: cantidad resultante
 ```
 

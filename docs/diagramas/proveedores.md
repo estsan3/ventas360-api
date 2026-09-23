@@ -26,7 +26,15 @@ sequenceDiagram
     Service->>Excel: parsear bytes
     Excel-->>Service: filas
     loop cada fila
-        Service->>Productos: obtener_por_codigo_proveedor o sku
+        Service->>DAO: buscar_item_por_codigo
+        alt item ya vinculado
+            Service->>Productos: obtener_producto
+        else
+            Service->>Productos: obtener_por_codigo_proveedor
+            opt sin match
+                Service->>Productos: obtener_por_sku
+            end
+        end
         alt no dry_run
             Service->>DAO: upsert ListaProveedorItem
             alt hay artículo en catálogo

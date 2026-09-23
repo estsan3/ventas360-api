@@ -22,7 +22,8 @@ sequenceDiagram
 
     Cliente->>Router: POST /ai/mostrador/interpretar texto
     Router->>Service: interpretar_mostrador
-    alt anthropic_api_key y modo no mock
+    Note over Service: exige VENTAS360_AI_HABILITADA
+    alt anthropic_api_key y remito_parse_modo no mock
         Service->>LLM: llamar_haiku_texto PROMPT_MOSTRADOR
         LLM-->>Service: JSON extraido
     else
