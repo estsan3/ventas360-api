@@ -1,9 +1,9 @@
 # auth — login
 
 Fuente: `app/modulos/auth/` · Flujo principal: `POST /api/v1/auth/login`.
-Actualizado: 2026-08-26.
+Actualizado: 2026-09-23.
 
-Valida credenciales, que el Host coincida con el tenant del usuario (o plataforma para `superadmin`) y emite JWT en cookie httpOnly + body.
+Valida credenciales, que el Host coincida con el tenant del usuario (o plataforma para `superadmin`) y emite JWT en cookie httpOnly + body. No hay `commit` en el login.
 
 ```mermaid
 sequenceDiagram
@@ -33,14 +33,23 @@ sequenceDiagram
     Router-->>Cliente: 200 LoginResponse
 ```
 
+`GET /auth/me` repite Host + `modulos_habilitados`. El alta de usuario asigna password inicial `cambiar12345` si el front no manda una. El alta rápida de vendedor crea email provisorio `vendedor-{uuid}@pendiente.ventas360`.
+
 ## Otros endpoints
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
+| POST | `/auth/login` | `login` |
 | GET | `/auth/me` | `obtener_perfil` |
 | POST | `/auth/logout` | `logout` (borra cookie) |
-| GET/POST/DELETE | `/usuarios` | listar / crear / eliminar |
-| GET/POST/DELETE | `/catalogos/vendedores` | vendedores (usuarios rol vendedor) |
+| GET | `/usuarios` | `listar_usuarios` |
+| POST | `/usuarios` | `crear_usuario` |
+| DELETE | `/usuarios/{id}` | `eliminar_usuario` |
+| GET | `/catalogos/vendedores` | `listar_vendedores` |
+| POST | `/catalogos/vendedores` | `crear_vendedor` |
+| DELETE | `/catalogos/vendedores/{id}` | `eliminar_vendedor` |
+
+Usuarios y vendedores exigen módulo `configuracion` (listar vendedores también acepta `clientes`, `mostrador`, `cta_cte`, `ventas`).
 
 ## Contrato público
 

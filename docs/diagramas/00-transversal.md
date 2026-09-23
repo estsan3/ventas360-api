@@ -1,9 +1,11 @@
 # Flujo transversal — request autenticado
 
 Fuente: `app/core/dependencias.py`, `app/modulos/tenants/dependencias.py`, `app/modulos/ia/dependencias.py`, `app/core/eventos.py`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-09-23.
 
-Casi todos los endpoints de comercio exigen cookie/Bearer JWT **y** que el Host sea el subdominio del tenant del usuario. El `tenant_id` se fija en contexto (`usando_tenant`) para filtrar filas sin ForeignKey entre módulos.
+Casi todos los endpoints de comercio exigen cookie/Bearer JWT **y** que el Host sea el subdominio del tenant del usuario. El JWT se reconstruye **solo desde los claims** (sin ir a la DB). El `tenant_id` se fija en contexto (`usando_tenant`) para filtrar filas sin ForeignKey entre módulos.
+
+Hostname: `X-Forwarded-Host` / `X-Original-Host`, luego Origin, Referer y Host (`hostname_desde_request`). Login, `GET /tenants/contexto` y el webhook n8n **no** usan JWT de comercio.
 
 ## Request de un comercio
 
@@ -12,6 +14,7 @@ sequenceDiagram
     participant Cliente
     participant FastAPI
     participant JWT as core.seguridad
+    participant TenantsDep as tenants.dependencias
     participant TenantsSvc as TenantsService
     participant TenantDAO
     participant Router
@@ -21,13 +24,17 @@ sequenceDiagram
     Cliente->>FastAPI: HTTP + cookie/Bearer + Host slug.localhost
     FastAPI->>JWT: decodificar_token
     JWT-->>FastAPI: UsuarioActual id, rol, tenant_id
-    FastAPI->>TenantsSvc: contexto_desde_host(Host)
+    FastAPI->>TenantsDep: exigir_usuario_del_comercio
+    TenantsDep->>TenantsSvc: contexto_desde_host(Host)
     TenantsSvc->>TenantDAO: buscar_por_slug
     TenantDAO-->>TenantsSvc: Tenant activo
-    TenantsSvc-->>FastAPI: tipo comercio + tenant_id
-    FastAPI->>FastAPI: exigir JWT.tenant_id == Host.tenant_id
-    FastAPI->>TenantsSvc: modulos_habilitados(rol)
-    TenantsSvc-->>FastAPI: lista de módulos
+    TenantsSvc-->>TenantsDep: tipo comercio + tenant_id
+    TenantsDep->>TenantsDep: JWT.tenant_id == Host.tenant_id
+    TenantsDep->>TenantsDep: usando_tenant(tenant_id)
+    opt requerir_modulo
+        FastAPI->>TenantsSvc: modulos_habilitados(rol)
+        TenantsSvc-->>FastAPI: lista de módulos
+    end
     FastAPI->>Router: DTO Request
     Router->>Service: caso de uso
     Service->>DAO: persistir + flush
@@ -35,6 +42,8 @@ sequenceDiagram
     Service-->>Router: DTO Response
     Router-->>Cliente: JSON
 ```
+
+`requerir_modulo(...)` es el único que consulta `modulos_habilitados`. Superadmin en `admin.*` entra por `exigir_host_plataforma` (sin `usando_tenant` de comercio).
 
 ## Capas dentro de un módulo
 
@@ -60,7 +69,7 @@ sequenceDiagram
 
 ## Excepción: webhook n8n
 
-`GET /api/v1/ai/webhook/resumen-dia` no usa JWT. Autentica con `X-Ventas360-Webhook-Secret` y fija el tenant con `X-Tenant-Slug` (`ia.dependencias`). Ver [ia.md](ia.md).
+`GET /api/v1/ai/webhook/resumen-dia` no usa JWT. Autentica con `X-Ventas360-Webhook-Secret` y fija el tenant con `X-Tenant-Slug` (`ia.dependencias` → `TenantsService.obtener_por_slug`). Ver [ia.md](ia.md).
 
 ## Convenciones
 

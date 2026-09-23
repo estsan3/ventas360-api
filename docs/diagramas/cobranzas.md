@@ -1,13 +1,15 @@
 # cobranzas — crear recibo
 
 Fuente: `app/modulos/cobranzas/` · Flujo principal: `POST /api/v1/cobranzas/recibos`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-09-23.
 
 Valida imputaciones contra comprobantes cobrables (remito/factura), registra **un** haber en CxC (referencia `recibo`) e impacta tesorería **por cada línea de medio**.
 
 Medios: un `medio` + `cheque` opcional, o `medios[]` (efectivo, transferencia, tarjeta, cheque). Si hay más de una línea, el recibo queda `mixto`. Hasta 3 cheques. La suma de medios debe igualar el monto.
 
-Imputaciones opcionales: la suma no puede superar el monto. Si suma menos, el resto queda **a cuenta** (anticipo). Si no hay imputaciones, todo el haber es a cuenta.
+Imputaciones opcionales: la suma no puede superar el monto. Si suma menos, el resto queda **a cuenta** (anticipo). Si no hay imputaciones, todo el haber es a cuenta. Cada imputación se valida con `ContratoVentas.obtener_comprobante_cobrable` (mismo cliente).
+
+Con varias líneas, la referencia de tesorería es `{recibo_id}:{indice}` para no chocar la idempotencia.
 
 ```mermaid
 sequenceDiagram
@@ -53,7 +55,8 @@ sequenceDiagram
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET | `/cobranzas/recibos` | `listar_recibos` |
+| GET | `/cobranzas/recibos` | `listar_recibos` (`cliente_id`) |
 | GET | `/cobranzas/recibos/{id}` | `obtener_recibo` |
+| POST | `/cobranzas/recibos` | `crear_recibo` |
 
-No hay `contrato.py` de cobranzas: el módulo orquesta a otros.
+Permiso: módulo `cta_cte`. No hay `contrato.py` de cobranzas: el módulo orquesta a otros.

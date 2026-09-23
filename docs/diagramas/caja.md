@@ -1,9 +1,9 @@
 # caja — ingreso y cierre
 
 Fuente: `app/modulos/caja/` · Flujos: contrato `registrar_ingreso` (cobranzas), `POST /api/v1/caja/movimientos` y `POST /api/v1/caja/cerrar`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-09-23.
 
-El contrato es idempotente por referencia y **no commitea**. El alta HTTP exige caja abierta ese día. El cierre compara esperado vs contado en efectivo, cheques y tarjetas.
+El contrato es idempotente por referencia y **no commitea**. El alta HTTP exige caja abierta ese día. El cierre compara esperado vs contado en efectivo, cheques y tarjetas. Egreso en efectivo no puede superar el esperado del día; egreso exige concepto.
 
 ```mermaid
 sequenceDiagram
@@ -75,14 +75,18 @@ sequenceDiagram
     Router-->>Cliente: 200
 ```
 
+`POST /caja/abrir` con fondo inicial > 0 genera un ingreso efectivo `referencia_tipo=apertura`.
+
 ## Otros endpoints
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET | `/caja/movimientos` | `listar_movimientos_caja` |
-| GET | `/caja/saldo` | `saldo_caja` (esperado por medio) |
-| POST | `/caja/abrir` | `abrir_caja` (fondo inicial → ingreso efectivo) |
+| GET | `/caja/movimientos` | `listar_movimientos_caja` (`fecha`) |
+| GET | `/caja/saldo` | `saldo_caja` (esperado por medio; `fecha`) |
+| POST | `/caja/abrir` | `abrir_caja` |
 | POST | `/caja/cerrar` | `cerrar_caja` |
 | POST | `/caja/movimientos` | `crear_movimiento_caja` |
+
+Permiso: módulo `compras`.
 
 `ContratoCaja`: `registrar_ingreso`, `registrar_egreso`. Usado por **cobranzas** y **pagos**.

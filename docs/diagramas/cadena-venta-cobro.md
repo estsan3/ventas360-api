@@ -1,7 +1,7 @@
 # Cadena venta → cobro → tesorería
 
 Fuente: `ventas`, `cxc`, `cobranzas`, `caja`, `bancos`, `stock`, `parametros`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-09-23.
 
 Flujo de punta a punta de un remito de venta hasta el impacto en caja, banco o cartera de cheques. Cada paso HTTP es un caso de uso con su propia transacción, salvo el impacto interno vía contrato (misma TX que el service llamador).
 
@@ -34,6 +34,11 @@ sequenceDiagram
         FE-->>Ventas: CAE o rechazo
     end
     Ventas->>Cxc: existe_referencia remito
+    alt remito ya en CxC
+        Note over Ventas,Cxc: no vuelve a imputar
+    else legacy sin debe
+        Ventas->>Cxc: registrar_debe referencia factura
+    end
     Ventas->>Ventas: commit factura + CAE
     Ventas-)Bus: ventas.factura.creada
     Ventas-->>Cliente: factura confirmada
