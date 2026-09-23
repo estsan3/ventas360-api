@@ -1,7 +1,7 @@
 # stock — ajuste y toma de inventario
 
 Fuente: `app/modulos/stock/` · Flujo principal: `POST /api/v1/stock/ajustes`. También: `POST /api/v1/stock/tomas`.
-Actualizado: 2026-08-27.
+Actualizado: 2026-09-23.
 
 Ajuste relativo (positivo o negativo) sobre saldo de artículo × depósito. Egresos/ingresos de comprobantes van por contrato (`egresar` / `ingresar`) sin commit propio. La toma deja el saldo en las cantidades contadas y sincroniza el stock plano del catálogo.
 
@@ -51,6 +51,8 @@ sequenceDiagram
     Router-->>Cliente: 200
 ```
 
+Artículos duplicados en el conteo → `ReglaDeNegocioViolada`. Deltas en 0 cuentan como `sin_cambio`.
+
 ## Contrato (llamado por ventas/compras/productos)
 
 ```mermaid
@@ -60,7 +62,7 @@ sequenceDiagram
     participant DAO as StockDAO
     participant BO as StockBO
 
-    Orquestador->>Stock: egresar o ingresar
+    Orquestador->>Stock: egresar o ingresar deposito_id del comprobante
     Stock->>DAO: buscar_deposito activo
     Stock->>DAO: buscar_saldo
     Stock->>BO: validar_egreso o validar_ingreso
@@ -74,7 +76,10 @@ Sin commit. Lo hace el service llamador.
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET/POST/PUT/PATCH | `/stock/depositos` | CRUD depósitos |
+| GET | `/stock/depositos` | `listar_depositos` |
+| POST | `/stock/depositos` | `crear_deposito` |
+| PUT | `/stock/depositos/{id}` | `actualizar_deposito` |
+| PATCH | `/stock/depositos/{id}/desactivar` | `desactivar_deposito` |
 | GET | `/stock/articulos/{id}/saldos` | `listar_saldos_articulo` |
 | GET | `/stock/depositos/{id}/inventario` | `listar_inventario_deposito` (migra stock plano legacy) |
 | POST | `/stock/ajustes` | `ajustar_stock` |
