@@ -1,11 +1,11 @@
 # compras — ciclo pedido → remito → factura
 
 Fuente: `app/modulos/compras/` · Permiso: módulo `compras` · Prefijo HTTP: `/api/v1/compras`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-09-24.
 
 El módulo registra **cómo el comercio compra**. Un comprobante es un `pedido_compra`, un `remito_compra` o una `factura_compra`. El catálogo (SKU propio) vive en **productos**; la lista del proveedor vive en **proveedores**. Compras los usa, no los crea.
 
-No hay `contrato.py`: otros módulos no llaman a compras. Stock, CxP, productos y proveedores se consumen por contrato.
+No hay `contrato.py`: otros módulos no llaman a compras. Stock, CxP, productos y proveedores se consumen por contrato. **ia** lee `ComprasDAO` en el mismo proceso (remitos de compra en borrador).
 
 ## Qué hace
 
@@ -111,17 +111,30 @@ sequenceDiagram
     Router->>Service: confirmar
     Service->>BO: validar_confirmacion validar_lineas_con_articulo
     loop cada linea
-        Service->>Stock: ingresar articulo, deposito, cantidad
+        Service->>Stock: ingresar articulo, compra.deposito_id, cantidad
     end
     Service->>DAO: pedido parcial o recibido
     Service->>Service: commit
     Service-)Bus: compras.remito_compra.confirmado
 
-    Cliente->>Router: POST /compras/{id}/facturar
-    Router->>Service: facturar_remito
-    Service->>Cxp: registrar_debe proveedor, total
-    Service->>Service: commit factura confirmada
-    Service-)Bus: compras.factura_compra.creada
+    alt factura directa sin origen
+        Cliente->>Router: POST /compras tipo factura_compra
+        Router->>Service: crear factura borrador
+        Cliente->>Router: POST /compras/{id}/confirmar
+        Router->>Service: confirmar
+        loop cada linea
+            Service->>Stock: ingresar articulo, compra.deposito_id, cantidad
+        end
+        Service->>Cxp: registrar_debe proveedor, total
+        Service->>Service: commit
+        Service-)Bus: compras.factura_compra.confirmado
+    else facturar remito
+        Cliente->>Router: POST /compras/{id}/facturar
+        Router->>Service: facturar_remito
+        Service->>Cxp: registrar_debe proveedor, total
+        Service->>Service: commit factura confirmada
+        Service-)Bus: compras.factura_compra.creada
+    end
     Router-->>Cliente: 200
 ```
 
@@ -149,7 +162,7 @@ Errores de negocio → HTTP **422** (`ReglaDeNegocioViolada`).
 
 ## Parsear foto de remito
 
-`POST /compras/remitos/parsear` (multipart JPEG/PNG/WebP). No persiste: el front crea el remito después.
+`POST /compras/remitos/parsear` (multipart JPEG/PNG/WebP, `proveedor_id` y `deposito_id` opcionales). No persiste: el front crea el remito después.
 
 ```mermaid
 sequenceDiagram
