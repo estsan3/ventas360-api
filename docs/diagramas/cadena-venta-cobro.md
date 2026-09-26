@@ -1,7 +1,7 @@
 # Cadena venta → cobro → tesorería
 
 Fuente: `ventas`, `cxc`, `cobranzas`, `caja`, `bancos`, `stock`, `parametros`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-09-26.
 
 Flujo de punta a punta de un remito de venta hasta el impacto en caja, banco o cartera de cheques. Cada paso HTTP es un caso de uso con su propia transacción, salvo el impacto interno vía contrato (misma TX que el service llamador).
 
@@ -17,7 +17,7 @@ sequenceDiagram
     participant Bancos as ContratoBancos
     participant Bus as bus_eventos
 
-    Cliente->>Ventas: POST /ventas/pedidos tipo remito
+    Cliente->>Ventas: POST /ventas/pedidos tipo remito + deposito_id
     Ventas->>Ventas: armar lineas, IVA, talonario
     Ventas-->>Cliente: remito borrador
 
@@ -34,11 +34,18 @@ sequenceDiagram
         FE-->>Ventas: CAE o rechazo
     end
     Ventas->>Cxc: existe_referencia remito
+    alt remito ya en CxC
+        Note over Ventas,Cxc: no vuelve a imputar
+    else legacy sin debe
+        Ventas->>Cxc: registrar_debe referencia factura
+    end
     Ventas->>Ventas: commit factura + CAE
     Ventas-)Bus: ventas.factura.creada
     Ventas-->>Cliente: factura confirmada
 
     Cliente->>Cobranzas: POST /cobranzas/recibos
+    Cobranzas->>Cobranzas: validar cliente e imputaciones
+    Note over Cobranzas: ContratoVentas.obtener_comprobante_cobrable
     Cobranzas->>Cxc: registrar_haber referencia recibo
     loop cada linea de medio
         alt transferencia
@@ -55,6 +62,6 @@ sequenceDiagram
     Cobranzas-->>Cliente: ReciboResponse
 ```
 
-Si el remito ya imputó CxC, facturar no duplica el debe. Si ARCA rechaza el CAE, no se confirma la factura. Imputaciones menores al monto del recibo quedan a cuenta.
+El remito exige `deposito_id`. Si ya imputó CxC, facturar no duplica el debe. Si ARCA rechaza el CAE, no se confirma la factura. Imputaciones menores al monto del recibo quedan a cuenta.
 
 El espejo de compras es [compras.md](compras.md) + [cxp.md](cxp.md): pedido (sin stock) → remito (ingreso) → factura (debe al proveedor, sin duplicar stock).
