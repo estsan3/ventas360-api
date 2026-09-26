@@ -1,9 +1,9 @@
 # tenants — crear comercio
 
 Fuente: `app/modulos/tenants/` · Flujo principal: `POST /api/v1/tenants` (host `admin.*`, rol `superadmin`).
-Actualizado: 2026-08-26.
+Actualizado: 2026-09-26.
 
-Alta de comercio + primer administrador + matriz de permisos default, **una transacción**.
+Alta de comercio + primer administrador + matriz de permisos default, **una transacción**. Los permisos se escriben con `usando_tenant(tenant.id)`.
 
 ```mermaid
 sequenceDiagram
@@ -42,6 +42,8 @@ sequenceDiagram
     Service->>Service: clasificar_host plataforma vs slug
     alt host admin (plataforma)
         Service-->>Router: tipo plataforma
+    else sin slug (localhost u origen no clasificado)
+        Service-->>Router: tipo sin_slug
     else slug de comercio
         Service->>DAO: buscar_por_slug
         DAO-->>Service: Tenant o None
@@ -50,15 +52,23 @@ sequenceDiagram
     Router-->>Cliente: ContextoHostResponse
 ```
 
+Hostname: `X-Forwarded-Host` / `X-Original-Host`, luego Origin, Referer y Host (`hostname_desde_request`). Puede devolver `plataforma`, `comercio` o `sin_slug`.
+
 ## Otros endpoints
 
 | Método | Ruta | Quién | operation_id |
 |--------|------|-------|----------------|
+| GET | `/tenants/contexto` | público | `contexto_tenant_host` |
 | GET | `/tenants` | superadmin | `listar_tenants` |
-| GET/PATCH | `/tenants/{id}` | superadmin | obtener / actualizar |
+| POST | `/tenants` | superadmin | `crear_tenant` |
+| GET | `/tenants/{id}` | superadmin | `obtener_tenant` (ficha + usuarios) |
+| PATCH | `/tenants/{id}` | superadmin | `actualizar_tenant` (nombre/activo; slug inmutable) |
 | PATCH | `/tenants/{id}/usuarios/{uid}/password` | superadmin | `cambiar_password_usuario_tenant` |
-| GET/PUT | `/tenants/permisos` | comercio + módulo configuracion | matriz de permisos |
+| GET | `/tenants/permisos` | comercio + módulo configuracion | `obtener_matriz_permisos` |
+| PUT | `/tenants/permisos` | comercio + módulo configuracion | `actualizar_matriz_permisos` |
 
 ## Contrato público
 
-`ContratoTenants`: `contexto_desde_host`, `modulos_habilitados`. Usado por **auth** (login/perfil).
+`ContratoTenants`: `obtener_por_id`, `obtener_por_slug`, `existe_tenant`, `contexto_desde_host`, `modulos_habilitados`.
+
+Usado por **auth** (login/perfil). El webhook n8n de **ia** llama `TenantsService.obtener_por_slug` en el mismo proceso (sin contrato).
