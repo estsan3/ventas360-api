@@ -1,7 +1,7 @@
 # ventas — confirmar remito
 
 Fuente: `app/modulos/ventas/` · Flujo principal: `POST /api/v1/ventas/pedidos/{id}/confirmar-remito`.
-Actualizado: 2026-09-01.
+Actualizado: 2026-09-27.
 
 Egreso de stock + debe en CxC en la **misma transacción**. Luego publica `ventas.remito.confirmado` (hooks locales no-op; otros módulos pueden suscribirse).
 
@@ -21,7 +21,7 @@ sequenceDiagram
     Service->>DAO: buscar_por_id
     Service->>BO: validar_confirmacion_remito
     loop cada linea
-        Service->>Stock: egresar articulo, deposito, cantidad
+        Service->>Stock: egresar articulo, remito.deposito_id, cantidad
     end
     Service->>Cxc: registrar_debe cliente, total, ref remito
     Service->>Service: commit
@@ -30,11 +30,17 @@ sequenceDiagram
     Router-->>Cliente: 200
 ```
 
+`PATCH /ventas/pedidos/{id}/estado` con remito → `confirmado` reusa este mismo flujo.
+
 ## Crear comprobante (contexto)
 
-`POST /ventas/pedidos`: valida cliente, arma líneas con `ContratoProductos` + `ContratoPrecios`, IVA y número de `ContratoParametros`, commit, evento `ventas.{tipo}.creado`.
+`POST /ventas/pedidos`: valida cliente, exige `deposito_id` si es remito, arma líneas con `ContratoProductos` + `ContratoPrecios`, IVA y número de `ContratoParametros` (si no hay talonario, `numero` queda vacío), commit, evento `ventas.{tipo}.creado`. En factura aplica identidad fiscal del cliente/emisor.
 
-Facturar remito (`POST .../facturar`): si el remito **ya** tiene movimiento CxC, no vuelve a imputar. Evento `ventas.factura.creada`. Si ARCA está habilitada, pide CAE antes de confirmar.
+Factura directa (`tipo=factura` en borrador → `PATCH .../estado` `confirmado`): `_autorizar_factura` + `_imputar_factura_en_cxc` (referencia `factura`) y evento `ventas.factura.estado_cambiado`. No usa `POST .../facturar`.
+
+## Facturar remito
+
+`POST .../facturar`: si el remito **ya** tiene movimiento CxC, no vuelve a imputar. Evento `ventas.factura.creada`. Si ARCA está habilitada, pide CAE antes de confirmar.
 
 ## Factura fiscal (ARCA / WSFE)
 
@@ -50,6 +56,7 @@ sequenceDiagram
     participant DAO as VentasDAO
     participant FE as ProveedorFE
     participant ARCA as WSAA/WSFE
+    participant Cxc as ContratoCxc
 
     Cliente->>Service: confirmar factura
     Service->>Param: obtener_afip
@@ -69,14 +76,33 @@ sequenceDiagram
         Note over Service: si rechaza, no confirma
         Service->>Fiscal: formatear_numero_fiscal y armar_qr
     end
+    alt PATCH estado factura directa
+        Service->>Cxc: registrar_debe referencia factura
+    else POST facturar remito
+        Service->>Cxc: existe_referencia remito
+        alt remito sin debe
+            Service->>Cxc: registrar_debe referencia factura
+        end
+    end
     Service->>Service: commit factura confirmada + CAE
 ```
+
+## Eventos
+
+| Evento | Cuándo |
+|--------|--------|
+| `ventas.{tipo}.creado` | Alta de comprobante |
+| `ventas.{tipo}.estado_cambiado` | `PATCH .../estado` (no remito→confirmado) |
+| `ventas.remito.confirmado` | Confirmar remito |
+| `ventas.factura.creada` | Facturar remito |
+
+Suscripciones locales en `eventos.py` (no-op). Registradas en `main.py`.
 
 ## Otros endpoints
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET | `/ventas/pedidos` | `listar_pedidos` |
+| GET | `/ventas/pedidos` | `listar_pedidos` (`tipo`, `cliente_id`) |
 | GET | `/ventas/pedidos/{id}` | `obtener_pedido` |
 | POST | `/ventas/pedidos` | `crear_pedido` |
 | PATCH | `/ventas/pedidos/{id}/estado` | `cambiar_estado_pedido` |
