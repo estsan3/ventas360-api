@@ -1,7 +1,7 @@
 # tenants — crear comercio
 
 Fuente: `app/modulos/tenants/` · Flujo principal: `POST /api/v1/tenants` (host `admin.*`, rol `superadmin`).
-Actualizado: 2026-08-26.
+Actualizado: 2026-11-07.
 
 Alta de comercio + primer administrador + matriz de permisos default, **una transacción**.
 
@@ -61,4 +61,4 @@ sequenceDiagram
 
 ## Contrato público
 
-`ContratoTenants`: `contexto_desde_host`, `modulos_habilitados`. Usado por **auth** (login/perfil).
+`ContratoTenants`: `obtener_por_id`, `obtener_por_slug`, `existe_tenant`, `contexto_desde_host`, `modulos_habilitados`. Usado por **auth** (login/perfil). El webhook n8n de **ia** llama `TenantsService.obtener_por_slug` (mismo proceso, sin contrato).

@@ -1,7 +1,7 @@
 # ventas — confirmar remito
 
 Fuente: `app/modulos/ventas/` · Flujo principal: `POST /api/v1/ventas/pedidos/{id}/confirmar-remito`.
-Actualizado: 2026-09-01.
+Actualizado: 2026-11-07.
 
 Egreso de stock + debe en CxC en la **misma transacción**. Luego publica `ventas.remito.confirmado` (hooks locales no-op; otros módulos pueden suscribirse).
 
@@ -35,6 +35,8 @@ sequenceDiagram
 `POST /ventas/pedidos`: valida cliente, arma líneas con `ContratoProductos` + `ContratoPrecios`, IVA y número de `ContratoParametros`, commit, evento `ventas.{tipo}.creado`.
 
 Facturar remito (`POST .../facturar`): si el remito **ya** tiene movimiento CxC, no vuelve a imputar. Evento `ventas.factura.creada`. Si ARCA está habilitada, pide CAE antes de confirmar.
+
+`PATCH .../estado` a `confirmado` en un remito reutiliza `confirmar_remito`. En una factura pide CAE, imputa CxC y publica `ventas.factura.estado_cambiado` (no `ventas.factura.creada`). Los hooks locales de `eventos.py` son no-op.
 
 ## Factura fiscal (ARCA / WSFE)
 
