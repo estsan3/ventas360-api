@@ -1,7 +1,7 @@
 # bancos — acreditar, cartera de cheques y depositar
 
 Fuente: `app/modulos/bancos/` · Flujos: `ContratoBancos` (cobranzas/caja) y `POST /api/v1/bancos/valores/{id}/depositar`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-07.
 
 ## Acreditar (contrato, misma TX que cobranzas)
 
@@ -72,10 +72,12 @@ sequenceDiagram
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET/POST | `/bancos/cuentas` | listar / crear cuenta |
+| GET | `/bancos/cuentas` | `listar_cuentas_bancarias` |
+| POST | `/bancos/cuentas` | `crear_cuenta_bancaria` |
 | GET | `/bancos/movimientos` | `listar_movimientos_bancarios` |
-| GET/POST | `/bancos/valores` | listar / crear valor en cartera |
+| GET | `/bancos/valores` | `listar_valores_bancarios` |
+| POST | `/bancos/valores` | `crear_valor_bancario` |
 | POST | `/bancos/valores/{id}/depositar` | `depositar_valor_bancario` |
 | POST | `/bancos/valores/{id}/entregar` | `entregar_valor_bancario` |
 
-`ContratoBancos`: `acreditar`, `debitar`, `recibir_cheque`, `entregar_cheque`, `emitir_cheque_propio`. Usado por **cobranzas**, **caja** y **pagos**.
+`ContratoBancos`: `acreditar`, `debitar`, `recibir_cheque`, `entregar_cheque`, `emitir_cheque_propio`. Usado por **cobranzas**, **caja** y **pagos**. El HTTP de bancos exige módulo `compras`.
