@@ -1,7 +1,7 @@
 # Cadena venta → cobro → tesorería
 
 Fuente: `ventas`, `cxc`, `cobranzas`, `caja`, `bancos`, `stock`, `parametros`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-08.
 
 Flujo de punta a punta de un remito de venta hasta el impacto en caja, banco o cartera de cheques. Cada paso HTTP es un caso de uso con su propia transacción, salvo el impacto interno vía contrato (misma TX que el service llamador).
 
@@ -55,6 +55,6 @@ sequenceDiagram
     Cobranzas-->>Cliente: ReciboResponse
 ```
 
-Si el remito ya imputó CxC, facturar no duplica el debe. Si ARCA rechaza el CAE, no se confirma la factura. Imputaciones menores al monto del recibo quedan a cuenta.
+Si el remito ya imputó CxC, facturar no duplica el debe. `PATCH /ventas/pedidos/{id}/estado` a confirmado en factura publica `ventas.factura.estado_cambiado`, no `ventas.factura.creada`. Si ARCA rechaza el CAE, no se confirma la factura. Imputaciones menores al monto del recibo quedan a cuenta.
 
 El espejo de compras es [compras.md](compras.md) + [cxp.md](cxp.md): pedido (sin stock) → remito (ingreso) → factura (debe al proveedor, sin duplicar stock).

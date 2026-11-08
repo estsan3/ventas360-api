@@ -1,9 +1,11 @@
 # Flujo transversal — request autenticado
 
 Fuente: `app/core/dependencias.py`, `app/modulos/tenants/dependencias.py`, `app/modulos/ia/dependencias.py`, `app/core/eventos.py`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-08.
 
 Casi todos los endpoints de comercio exigen cookie/Bearer JWT **y** que el Host sea el subdominio del tenant del usuario. El `tenant_id` se fija en contexto (`usando_tenant`) para filtrar filas sin ForeignKey entre módulos.
+
+Dependencias típicas de un endpoint de comercio: `obtener_usuario_actual` (JWT) → `exigir_usuario_del_comercio` (Host + match de tenant) → `requerir_modulo(rol)`.
 
 ## Request de un comercio
 
@@ -12,6 +14,7 @@ sequenceDiagram
     participant Cliente
     participant FastAPI
     participant JWT as core.seguridad
+    participant TenantsDep as tenants.dependencias
     participant TenantsSvc as TenantsService
     participant TenantDAO
     participant Router
@@ -19,14 +22,18 @@ sequenceDiagram
     participant DAO
 
     Cliente->>FastAPI: HTTP + cookie/Bearer + Host slug.localhost
-    FastAPI->>JWT: decodificar_token
+    FastAPI->>JWT: obtener_usuario_actual
+    JWT->>JWT: decodificar_token
     JWT-->>FastAPI: UsuarioActual id, rol, tenant_id
-    FastAPI->>TenantsSvc: contexto_desde_host(Host)
+    FastAPI->>TenantsDep: exigir_usuario_del_comercio
+    TenantsDep->>TenantsSvc: contexto_desde_host(Host)
     TenantsSvc->>TenantDAO: buscar_por_slug
     TenantDAO-->>TenantsSvc: Tenant activo
-    TenantsSvc-->>FastAPI: tipo comercio + tenant_id
-    FastAPI->>FastAPI: exigir JWT.tenant_id == Host.tenant_id
-    FastAPI->>TenantsSvc: modulos_habilitados(rol)
+    TenantsSvc-->>TenantsDep: tipo comercio + tenant_id
+    TenantsDep->>TenantsDep: JWT.tenant_id == Host.tenant_id
+    TenantsDep->>TenantsDep: usando_tenant
+    FastAPI->>TenantsDep: requerir_modulo
+    TenantsDep->>TenantsSvc: modulos_habilitados(tenant_id, rol)
     TenantsSvc-->>FastAPI: lista de módulos
     FastAPI->>Router: DTO Request
     Router->>Service: caso de uso

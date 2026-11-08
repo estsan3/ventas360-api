@@ -1,7 +1,7 @@
 # proveedores — importar lista Excel
 
 Fuente: `app/modulos/proveedores/` · Flujo principal: `POST /api/v1/proveedores/{id}/listas/importar`.
-Actualizado: 2026-08-28.
+Actualizado: 2026-11-08.
 
 Parsea `.xlsx` y **persiste la lista del proveedor** (`proveedores_lista_item`). **No crea artículos** del catálogo.
 
@@ -56,11 +56,12 @@ sequenceDiagram
 | GET | `/proveedores/{id}` | `obtener_proveedor` |
 | POST | `/proveedores` | `crear_proveedor` |
 | PUT | `/proveedores/{id}` | `actualizar_proveedor` |
-| PATCH | `/proveedores/{id}` | `desactivar_proveedor` |
+| PATCH | `/proveedores/{id}/desactivar` | `desactivar_proveedor` |
+| POST | `/proveedores/{id}/listas/importar` | `importar_lista_proveedor` |
 | GET | `/proveedores/{id}/listas/items` | `listar_items_lista_proveedor` |
 | POST | `/proveedores/{id}/listas/items/{item_id}/alta` | `alta_articulo_desde_lista` |
 | POST | `/proveedores/{id}/listas/items/{item_id}/vincular` | `vincular_item_lista_articulo` |
 
 ## Contrato público
 
-`ContratoProveedores.existe_proveedor`, `obtener_item`, `obtener_item_por_id`. Usado por **compras**. El ciclo comercial (pedido → remito → factura) está en [compras.md](compras.md).
+`ContratoProveedores.existe_proveedor`, `obtener_item`, `obtener_item_por_id`. Usado por **compras**. HTTP exige módulo `compras`. El ciclo comercial (pedido → remito → factura) está en [compras.md](compras.md).
