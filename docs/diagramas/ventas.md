@@ -1,7 +1,7 @@
 # ventas — confirmar remito
 
 Fuente: `app/modulos/ventas/` · Flujo principal: `POST /api/v1/ventas/pedidos/{id}/confirmar-remito`.
-Actualizado: 2026-09-01.
+Actualizado: 2026-11-08.
 
 Egreso de stock + debe en CxC en la **misma transacción**. Luego publica `ventas.remito.confirmado` (hooks locales no-op; otros módulos pueden suscribirse).
 
@@ -34,7 +34,42 @@ sequenceDiagram
 
 `POST /ventas/pedidos`: valida cliente, arma líneas con `ContratoProductos` + `ContratoPrecios`, IVA y número de `ContratoParametros`, commit, evento `ventas.{tipo}.creado`.
 
+```mermaid
+sequenceDiagram
+    participant Cliente
+    participant Router as ventas.router
+    participant Service as VentasService
+    participant BO as VentasBO
+    participant Clientes as ContratoClientes
+    participant Prod as ContratoProductos
+    participant Precios as ContratoPrecios
+    participant Param as ContratoParametros
+    participant DAO as VentasDAO
+    participant Bus as bus_eventos
+
+    Cliente->>Router: POST /ventas/pedidos tipo, cliente, lineas
+    Router->>Service: crear
+    Service->>BO: validar_tipo y validar_creacion
+    Service->>Clientes: existe_cliente
+    Service->>Param: obtener_negocio
+    loop cada linea
+        Service->>Prod: obtener_producto
+        Service->>Precios: obtener_precio articulo, cliente
+    end
+    alt tipo factura
+        Service->>Clientes: obtener_fiscal
+        Service->>Param: obtener_afip
+    end
+    Service->>Param: asignar_numero tipo
+    Service->>DAO: guardar Pedido borrador
+    Service->>Service: commit
+    Service-)Bus: ventas.{tipo}.creado
+    Service-->>Router: PedidoResponse
+```
+
 Facturar remito (`POST .../facturar`): si el remito **ya** tiene movimiento CxC, no vuelve a imputar. Evento `ventas.factura.creada`. Si ARCA está habilitada, pide CAE antes de confirmar.
+
+`PATCH .../estado` a `confirmado` en un remito reutiliza `confirmar_remito`. En una factura pide CAE, imputa CxC y publica `ventas.factura.estado_cambiado` (no `ventas.factura.creada`). Los hooks locales de `eventos.py` son no-op (`ventas.remito.confirmado` y `ventas.factura.creada`).
 
 ## Factura fiscal (ARCA / WSFE)
 

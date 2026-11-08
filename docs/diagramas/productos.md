@@ -1,7 +1,7 @@
 # productos — alta
 
 Fuente: `app/modulos/productos/` · Flujo principal: `POST /api/v1/productos`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-08.
 
 SKU único. Si `stock > 0`, sincroniza el saldo del depósito default vía contrato (misma TX).
 
@@ -34,9 +34,9 @@ sequenceDiagram
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET | `/productos` | `listar_productos` (stock via contrato) |
+| GET | `/productos` | `listar_productos` (stock via contrato; paginado) |
 | GET | `/productos/{id}` | `obtener_producto` |
-| PUT | `/productos/{id}` | `actualizar_producto` |
+| PUT | `/productos/{id}` | `actualizar_producto` (si cambia `stock`, re-sincroniza depósito default) |
 
 ## Contrato público
 
