@@ -1,7 +1,7 @@
 # reporteria — KPIs
 
 Fuente: `app/modulos/reporteria/` · Flujo principal: `GET /api/v1/reporteria/kpis`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-09.
 
 Solo lectura: agrega métricas vía contratos. No persiste ni publica eventos. Un comercio nuevo recibe ceros reales (sin números de demo).
 
@@ -32,6 +32,6 @@ sequenceDiagram
 
 Incluye: ventas día/mes, ticket promedio, pendientes, moneda, top artículos, serie de la semana, últimos comprobantes, reposición, CxC a cobrar/vencido.
 
-Hoy `saldos_agrupados` se lee del DAO de cxc (el contrato público no expone ese agregado).
+Hoy `saldos_agrupados` se lee del DAO de cxc y el saldo se calcula con `CxcBO` (el contrato público no expone ese agregado).
 
-No hay `contrato.py` ni DAO propio: el módulo es un compositor de contratos. **ia** llama a `ReporteriaService.obtener_kpis` en el mismo proceso (sin contrato).
+HTTP exige módulo `inicio`. Endpoint: `GET /reporteria/kpis` · `obtener_kpis`. No hay `contrato.py` ni DAO propio: el módulo es un compositor de contratos. **ia** llama a `ReporteriaService.obtener_kpis` en el mismo proceso (sin contrato).
