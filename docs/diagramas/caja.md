@@ -1,7 +1,7 @@
 # caja — ingreso y cierre
 
-Fuente: `app/modulos/caja/` · Flujos: contrato `registrar_ingreso` (cobranzas), `POST /api/v1/caja/movimientos` y `POST /api/v1/caja/cerrar`.
-Actualizado: 2026-08-31.
+Fuente: `app/modulos/caja/` · Flujos: contrato `registrar_ingreso` (cobranzas), `POST /api/v1/caja/abrir`, `POST /api/v1/caja/movimientos` y `POST /api/v1/caja/cerrar`.
+Actualizado: 2026-11-10.
 
 El contrato es idempotente por referencia y **no commitea**. El alta HTTP exige caja abierta ese día. El cierre compara esperado vs contado en efectivo, cheques y tarjetas.
 
@@ -22,6 +22,32 @@ sequenceDiagram
         Caja->>DAO: guardar MovimientoCaja tipo ingreso
         Caja-->>Cobranzas: ok
     end
+```
+
+## Abrir caja
+
+Varios turnos el mismo día: `buscar_abierta` impide abrir si ya hay una sesión abierta. El fondo inicial (si > 0) es un ingreso de efectivo con `referencia_tipo` `apertura`.
+
+```mermaid
+sequenceDiagram
+    participant Cliente
+    participant Router as caja.router
+    participant Service as CajaService
+    participant BO as CajaBO
+    participant DAO as CajaDAO
+
+    Cliente->>Router: POST /caja/abrir fondo_inicial
+    Router->>Service: abrir
+    Service->>BO: validar_fondo
+    Service->>DAO: buscar_abierta
+    Service->>BO: validar_apertura
+    Service->>DAO: guardar SesionCaja abierta
+    alt fondo_inicial mayor a 0
+        Service->>DAO: ingreso efectivo referencia apertura
+    end
+    Service->>Service: commit
+    Service-->>Router: SaldoCajaResponse
+    Router-->>Cliente: 200
 ```
 
 ## Movimiento manual HTTP (incluye cheques)
@@ -85,4 +111,4 @@ sequenceDiagram
 | POST | `/caja/cerrar` | `cerrar_caja` |
 | POST | `/caja/movimientos` | `crear_movimiento_caja` |
 
-`ContratoCaja`: `registrar_ingreso`, `registrar_egreso`. Usado por **cobranzas** y **pagos**.
+`ContratoCaja`: `registrar_ingreso`, `registrar_egreso`. Usado por **cobranzas** y **pagos**. El HTTP de caja exige módulo `compras`.
