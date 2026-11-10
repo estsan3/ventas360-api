@@ -4,11 +4,11 @@ Cada módulo tiene un diagrama del **flujo principal** (no el CRUD de listar).
 Las capas siguen `router → service → BO + DAO`; el **commit** ocurre solo en el service.
 La comunicación entre módulos es por `contrato.py` (síncrona) o `EventoDominio` (asíncrona).
 
-Prefijo HTTP: `/api/v1`. Actualizado: **2026-09-01**.
+Prefijo HTTP: `/api/v1`. Actualizado: **2026-11-10**.
 
 ## Cómo mantenerlos
 
-Al cambiar `router.py`, `service.py`, `contrato.py` o `eventos.py` de un módulo, actualizar el `.md` correspondiente y la fecha de esta tabla. Si se agrega un módulo, crear `docs/diagramas/<nombre>.md` y una fila acá (ver `AGENTS.md`).
+Al cambiar `router.py`, `service.py`, `contrato.py` o `eventos.py` de un módulo, actualizar el `.md` correspondiente y la fecha de esta tabla. Si se agrega un módulo, crear `docs/diagramas/<nombre>.md` y una fila acá (ver `AGENTS.md`). En cada `.md`, alinear `operation_id`, métodos de `contrato.py`, eventos publicados y `requerir_modulo`.
 
 ## Índice
 
@@ -30,7 +30,7 @@ Al cambiar `router.py`, `service.py`, `contrato.py` o `eventos.py` de un módulo
 | compras | Pedido → remito → factura | [compras.md](compras.md) |
 | cxp | `registrar_debe` (contrato) | [cxp.md](cxp.md) |
 | pagos | Pago a proveedor (CxP + tesorería) | [pagos.md](pagos.md) |
-| caja | Ingreso, cheques y cierre por medio | [caja.md](caja.md) |
+| caja | Abrir, ingreso, cheques y cierre por medio | [caja.md](caja.md) |
 | bancos | Acreditar, cartera de cheques y depositar | [bancos.md](bancos.md) |
 | parametros | Guardar negocio | [parametros.md](parametros.md) |
 | reporteria | KPIs del dashboard | [reporteria.md](reporteria.md) |

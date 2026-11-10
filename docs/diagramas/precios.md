@@ -1,7 +1,7 @@
 # precios — upsert artículo en lista
 
 Fuente: `app/modulos/precios/` · Flujo principal: `PUT /api/v1/precios/articulos`.
-Actualizado: 2026-08-26.
+Actualizado: 2026-11-10.
 
 Crea o actualiza el precio de un artículo en una lista. La resolución de venta (lista default → catálogo) la consume **ventas** vía `ContratoPrecios.obtener_precio`.
 
@@ -35,13 +35,37 @@ sequenceDiagram
 
 Lista default con override → si no, `producto.precio` del catálogo. `cliente_id` está reservado (listas por cliente, Fase B).
 
+```mermaid
+sequenceDiagram
+    participant Orquestador as Ventas o GET /precios/resolver
+    participant Precios as PreciosLocal
+    participant DAO as PreciosDAO
+    participant Productos as ContratoProductos
+
+    Orquestador->>Precios: obtener_precio articulo, cliente
+    Precios->>Productos: obtener_producto
+    Precios->>DAO: buscar_lista_default
+    alt hay lista default y override
+        Precios->>DAO: buscar_precio lista, articulo
+        Precios-->>Orquestador: precio de lista
+    else
+        Precios-->>Orquestador: producto.precio del catalogo
+    end
+```
+
 ## Otros endpoints
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET/POST/PUT/PATCH | `/precios/listas` | CRUD listas |
+| GET | `/precios/listas` | `listar_listas_precio` |
+| POST | `/precios/listas` | `crear_lista_precio` |
+| PUT | `/precios/listas/{id}` | `actualizar_lista_precio` |
+| PATCH | `/precios/listas/{id}/desactivar` | `desactivar_lista_precio` |
 | GET | `/precios/listas/{id}/articulos` | `listar_precios_lista` |
+| PUT | `/precios/articulos` | `upsert_precio_articulo` |
 | GET | `/precios/resolver` | `resolver_precio` |
+
+Permisos: mutaciones de listas y upsert de artículo → módulo `articulos`. Listar listas, precios y resolver → `articulos`, `cta_cte`, `mostrador` o `compras`.
 
 ## Contrato público
 

@@ -1,7 +1,7 @@
 # compras — ciclo pedido → remito → factura
 
 Fuente: `app/modulos/compras/` · Permiso: módulo `compras` · Prefijo HTTP: `/api/v1/compras`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-10.
 
 El módulo registra **cómo el comercio compra**. Un comprobante es un `pedido_compra`, un `remito_compra` o una `factura_compra`. El catálogo (SKU propio) vive en **productos**; la lista del proveedor vive en **proveedores**. Compras los usa, no los crea.
 
