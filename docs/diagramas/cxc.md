@@ -1,7 +1,7 @@
 # cxc — registrar debe (contrato)
 
 Fuente: `app/modulos/cxc/` · Flujo principal: `ContratoCxc.registrar_debe` (invocado por ventas al confirmar remito / confirmar factura).
-Actualizado: 2026-08-26.
+Actualizado: 2026-11-11.
 
 El HTTP de CxC es de consulta y ajustes manuales. El debe operativo lo escriben **ventas** y el haber **cobranzas**, sin commit en el contrato (idempotente por `referencia_tipo` + `referencia_id`).
 
@@ -43,6 +43,8 @@ sequenceDiagram
     Router-->>Cliente: 201
 ```
 
+El ajuste usa `referencia_id=""` (idempotencia distinta a comprobantes).
+
 ## Otros endpoints
 
 | Método | Ruta | operation_id |
@@ -50,5 +52,8 @@ sequenceDiagram
 | GET | `/cxc/saldos` | `listar_saldos_cxc` |
 | GET | `/cxc/clientes/{id}/saldo` | `obtener_saldo_cxc` |
 | GET | `/cxc/clientes/{id}/estado-cuenta` | `estado_cuenta_cxc` |
+| POST | `/cxc/ajustes` | `registrar_ajuste_cxc` |
 
 Saldo = debe − haber (`CxcBO.calcular_saldo`).
+
+`ContratoCxc`: `registrar_debe`, `registrar_haber`, `existe_referencia`, `saldo_cliente`.

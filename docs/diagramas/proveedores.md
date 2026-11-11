@@ -1,7 +1,7 @@
 # proveedores — importar lista Excel
 
 Fuente: `app/modulos/proveedores/` · Flujo principal: `POST /api/v1/proveedores/{id}/listas/importar`.
-Actualizado: 2026-08-28.
+Actualizado: 2026-11-11.
 
 Parsea `.xlsx` y **persiste la lista del proveedor** (`proveedores_lista_item`). **No crea artículos** del catálogo.
 
@@ -22,14 +22,16 @@ sequenceDiagram
     Cliente->>Router: POST /proveedores/{id}/listas/importar archivo xlsx
     Router->>Service: importar_lista
     Service->>DAO: buscar_por_id
+    Note over Service: proveedor.activo
     Service->>BO: validar_mapeo y validar_politica
     Service->>Excel: parsear bytes
     Excel-->>Service: filas
     loop cada fila
-        Service->>Productos: obtener_por_codigo_proveedor o sku
+        Service->>Service: resolver articulo (vinculo, codigo_proveedor, sku)
         alt no dry_run
             Service->>DAO: upsert ListaProveedorItem
             alt hay artículo en catálogo
+                Service->>BO: resolver_precio_venta
                 Service->>Productos: aplicar_costo_lista
             end
         end
@@ -56,7 +58,8 @@ sequenceDiagram
 | GET | `/proveedores/{id}` | `obtener_proveedor` |
 | POST | `/proveedores` | `crear_proveedor` |
 | PUT | `/proveedores/{id}` | `actualizar_proveedor` |
-| PATCH | `/proveedores/{id}` | `desactivar_proveedor` |
+| PATCH | `/proveedores/{id}/desactivar` | `desactivar_proveedor` |
+| POST | `/proveedores/{id}/listas/importar` | `importar_lista_proveedor` |
 | GET | `/proveedores/{id}/listas/items` | `listar_items_lista_proveedor` |
 | POST | `/proveedores/{id}/listas/items/{item_id}/alta` | `alta_articulo_desde_lista` |
 | POST | `/proveedores/{id}/listas/items/{item_id}/vincular` | `vincular_item_lista_articulo` |

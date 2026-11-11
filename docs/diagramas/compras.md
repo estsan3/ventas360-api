@@ -1,11 +1,11 @@
 # compras — ciclo pedido → remito → factura
 
 Fuente: `app/modulos/compras/` · Permiso: módulo `compras` · Prefijo HTTP: `/api/v1/compras`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-11.
 
 El módulo registra **cómo el comercio compra**. Un comprobante es un `pedido_compra`, un `remito_compra` o una `factura_compra`. El catálogo (SKU propio) vive en **productos**; la lista del proveedor vive en **proveedores**. Compras los usa, no los crea.
 
-No hay `contrato.py`: otros módulos no llaman a compras. Stock, CxP, productos y proveedores se consumen por contrato.
+No hay `contrato.py`: otros módulos no llaman a compras. Stock, CxP, productos y proveedores se consumen por contrato. **ia** lee `ComprasDAO` directo (sin contrato).
 
 ## Qué hace
 
@@ -66,6 +66,8 @@ El pedido sí puede incluir códigos que todavía no están en el catálogo.
 
 IVA: `ContratoParametros.obtener_negocio()`. Neto, IVA y total se calculan al crear.
 
+`registrar_debe` solo corre en `_imputar_factura_en_cxp` (confirmar factura o facturar remito). Confirmar remito **no** toca CxP.
+
 ## Eventos
 
 | Evento | Cuándo |
@@ -85,6 +87,7 @@ sequenceDiagram
     participant BO as ComprasBO
     participant DAO as ComprasDAO
     participant Prov as ContratoProveedores
+    participant Param as ContratoParametros
     participant Prod as ContratoProductos
     participant Stock as ContratoStock
     participant Cxp as ContratoCxp
@@ -94,10 +97,11 @@ sequenceDiagram
     Router->>Service: crear
     Service->>BO: validar_tipo validar_creacion
     Service->>Prov: existe_proveedor
-    Service->>Prod: obtener_producto o lista
-    Service->>DAO: guardar estado borrador
+    Service->>Param: obtener_negocio
+    Service->>Service: _armar_lineas (Prod / Prov)
+    Service->>BO: calcular_importes
+    Service->>DAO: guardar borrador
     Service->>Service: commit
-    Service-->>Router: CompraResponse
 
     Cliente->>Router: POST /compras/{id}/emitir
     Router->>Service: emitir
@@ -113,17 +117,22 @@ sequenceDiagram
     loop cada linea
         Service->>Stock: ingresar articulo, deposito, cantidad
     end
-    Service->>DAO: pedido parcial o recibido
+    Service->>Service: _actualizar_estado_pedido
     Service->>Service: commit
     Service-)Bus: compras.remito_compra.confirmado
 
     Cliente->>Router: POST /compras/{id}/facturar
     Router->>Service: facturar_remito
-    Service->>Cxp: registrar_debe proveedor, total
-    Service->>Service: commit factura confirmada
+    Service->>BO: validar_conversion_a_factura
+    Service->>DAO: guardar factura_compra confirmada
+    Note over Service: remito.estado = facturado
+    Service->>Cxp: registrar_debe (_imputar_factura_en_cxp)
+    Service->>Service: commit
     Service-)Bus: compras.factura_compra.creada
     Router-->>Cliente: 200
 ```
+
+Factura directa (sin `origen_id`): `POST /compras` tipo `factura_compra` + `POST .../confirmar` ingresa stock **y** imputa CxP; evento `compras.factura_compra.confirmado`.
 
 ## Endpoints
 
@@ -162,7 +171,7 @@ sequenceDiagram
 
     Cliente->>Router: POST /compras/remitos/parsear archivo
     Router->>Service: parsear_remito_foto
-    Service->>Service: validar_imagen_remito
+    Service->>Service: remito_vision.validar_imagen_remito
     alt hay proveedor_id
         Service->>Prov: existe_proveedor
     end
