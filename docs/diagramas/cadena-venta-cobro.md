@@ -1,7 +1,7 @@
 # Cadena venta → cobro → tesorería
 
 Fuente: `ventas`, `cxc`, `cobranzas`, `caja`, `bancos`, `stock`, `parametros`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-11.
 
 Flujo de punta a punta de un remito de venta hasta el impacto en caja, banco o cartera de cheques. Cada paso HTTP es un caso de uso con su propia transacción, salvo el impacto interno vía contrato (misma TX que el service llamador).
 
@@ -9,6 +9,10 @@ Flujo de punta a punta de un remito de venta hasta el impacto en caja, banco o c
 sequenceDiagram
     participant Cliente
     participant Ventas as VentasService
+    participant Clientes as ContratoClientes
+    participant Productos as ContratoProductos
+    participant Precios as ContratoPrecios
+    participant Param as ContratoParametros
     participant Stock as ContratoStock
     participant Cxc as ContratoCxc
     participant FE as ProveedorFE
@@ -17,8 +21,13 @@ sequenceDiagram
     participant Bancos as ContratoBancos
     participant Bus as bus_eventos
 
-    Cliente->>Ventas: POST /ventas/pedidos tipo remito
-    Ventas->>Ventas: armar lineas, IVA, talonario
+    Cliente->>Ventas: POST /ventas/pedidos tipo remito + deposito_id
+    Ventas->>Clientes: existe_cliente
+    Ventas->>Productos: obtener_producto
+    Ventas->>Precios: obtener_precio
+    Ventas->>Param: asignar_numero remito
+    Ventas->>Ventas: commit
+    Ventas-)Bus: ventas.remito.creado
     Ventas-->>Cliente: remito borrador
 
     Cliente->>Ventas: POST /ventas/pedidos/{id}/confirmar-remito
@@ -29,11 +38,13 @@ sequenceDiagram
     Ventas-->>Cliente: remito confirmado
 
     Cliente->>Ventas: POST /ventas/pedidos/{id}/facturar
+    Ventas->>Param: asignar_numero factura
     alt afip_habilitada
         Ventas->>FE: ultimo_autorizado y solicitar_cae
         FE-->>Ventas: CAE o rechazo
     end
     Ventas->>Cxc: existe_referencia remito
+    Note over Ventas,Cxc: si el remito ya imputo, no duplica el debe
     Ventas->>Ventas: commit factura + CAE
     Ventas-)Bus: ventas.factura.creada
     Ventas-->>Cliente: factura confirmada

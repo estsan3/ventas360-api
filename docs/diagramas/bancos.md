@@ -1,7 +1,9 @@
 # bancos — acreditar, cartera de cheques y depositar
 
 Fuente: `app/modulos/bancos/` · Flujos: `ContratoBancos` (cobranzas/caja) y `POST /api/v1/bancos/valores/{id}/depositar`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-11.
+
+Permiso HTTP: módulo `compras` (tesorería).
 
 ## Acreditar (contrato, misma TX que cobranzas)
 
@@ -61,20 +63,24 @@ sequenceDiagram
     Router->>Service: depositar_valor
     Service->>DAO: buscar_valor
     Service->>BO: validar_deposito estado en_cartera
-    Service->>DAO: cuenta destino o default
+    Service->>DAO: cuenta destino (body.cuenta_id) o default
     Service->>DAO: movimiento credito + valor depositado
     Service->>Service: commit
     Service-->>Router: ValorBancarioResponse
     Router-->>Cliente: 200
 ```
 
+`POST /bancos/valores` crea un valor `en_cartera` a mano (distinto del contrato `recibir_cheque`).
+
 ## Otros endpoints
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET/POST | `/bancos/cuentas` | listar / crear cuenta |
+| GET | `/bancos/cuentas` | `listar_cuentas_bancarias` |
+| POST | `/bancos/cuentas` | `crear_cuenta_bancaria` |
 | GET | `/bancos/movimientos` | `listar_movimientos_bancarios` |
-| GET/POST | `/bancos/valores` | listar / crear valor en cartera |
+| GET | `/bancos/valores` | `listar_valores_bancarios` |
+| POST | `/bancos/valores` | `crear_valor_bancario` |
 | POST | `/bancos/valores/{id}/depositar` | `depositar_valor_bancario` |
 | POST | `/bancos/valores/{id}/entregar` | `entregar_valor_bancario` |
 
