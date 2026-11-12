@@ -1,9 +1,9 @@
 # tenants — crear comercio
 
 Fuente: `app/modulos/tenants/` · Flujo principal: `POST /api/v1/tenants` (host `admin.*`, rol `superadmin`).
-Actualizado: 2026-08-26.
+Actualizado: 2026-11-12.
 
-Alta de comercio + primer administrador + matriz de permisos default, **una transacción**.
+Alta de comercio + primer administrador + matriz de permisos default, **una transacción**. El slug no se cambia después.
 
 ```mermaid
 sequenceDiagram
@@ -30,6 +30,8 @@ sequenceDiagram
 
 ## Contexto de Host (público)
 
+`GET /tenants/contexto` no exige JWT. Resuelve `admin.*` (plataforma), slug de comercio o `sin_slug`.
+
 ```mermaid
 sequenceDiagram
     participant Cliente
@@ -42,6 +44,8 @@ sequenceDiagram
     Service->>Service: clasificar_host plataforma vs slug
     alt host admin (plataforma)
         Service-->>Router: tipo plataforma
+    else sin slug
+        Service-->>Router: tipo sin_slug
     else slug de comercio
         Service->>DAO: buscar_por_slug
         DAO-->>Service: Tenant o None
@@ -54,11 +58,14 @@ sequenceDiagram
 
 | Método | Ruta | Quién | operation_id |
 |--------|------|-------|----------------|
-| GET | `/tenants` | superadmin | `listar_tenants` |
-| GET/PATCH | `/tenants/{id}` | superadmin | obtener / actualizar |
+| GET | `/tenants/contexto` | público | `contexto_tenant_host` |
+| GET | `/tenants` | superadmin + host plataforma | `listar_tenants` |
+| GET | `/tenants/{id}` | superadmin | `obtener_tenant` |
+| PATCH | `/tenants/{id}` | superadmin | `actualizar_tenant` (nombre/activo; slug de solo lectura) |
 | PATCH | `/tenants/{id}/usuarios/{uid}/password` | superadmin | `cambiar_password_usuario_tenant` |
-| GET/PUT | `/tenants/permisos` | comercio + módulo configuracion | matriz de permisos |
+| GET | `/tenants/permisos` | comercio + módulo `configuracion` | `obtener_matriz_permisos` |
+| PUT | `/tenants/permisos` | comercio + módulo `configuracion` | `actualizar_matriz_permisos` |
 
 ## Contrato público
 
-`ContratoTenants`: `contexto_desde_host`, `modulos_habilitados`. Usado por **auth** (login/perfil).
+`ContratoTenants`: `obtener_por_id`, `obtener_por_slug`, `existe_tenant`, `contexto_desde_host`, `modulos_habilitados`. Usado por **auth** (login/perfil). Las dependencias HTTP (`exigir_usuario_del_comercio`, `requerir_modulo`) llaman a `TenantsService` en el mismo proceso.
