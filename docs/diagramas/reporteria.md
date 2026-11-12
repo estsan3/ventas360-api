@@ -1,9 +1,9 @@
 # reporteria — KPIs
 
 Fuente: `app/modulos/reporteria/` · Flujo principal: `GET /api/v1/reporteria/kpis`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-12.
 
-Solo lectura: agrega métricas vía contratos. No persiste ni publica eventos. Un comercio nuevo recibe ceros reales (sin números de demo).
+Solo lectura: agrega métricas vía contratos. No persiste ni publica eventos. Un comercio nuevo recibe ceros reales (sin números de demo). Permiso: módulo `inicio`.
 
 ```mermaid
 sequenceDiagram

@@ -1,9 +1,9 @@
 # zonas — alta
 
 Fuente: `app/modulos/zonas/` · Flujo principal: `POST /api/v1/zonas`.
-Actualizado: 2026-08-26.
+Actualizado: 2026-11-12.
 
-Catálogo simple: nombre único, código. Sin contratos de entrada; expone `existe_zona` a clientes.
+Catálogo simple: nombre único, código. Sin contratos de entrada; expone `existe_zona` a clientes. Escritura: módulos `clientes` o `configuracion`.
 
 ```mermaid
 sequenceDiagram
@@ -28,10 +28,10 @@ sequenceDiagram
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET | `/zonas` | `listar_zonas` |
+| GET | `/zonas` | `listar_zonas` (paginado; query `q`, `activo`) |
 | GET | `/zonas/{id}` | `obtener_zona` |
 | PUT | `/zonas/{id}` | `actualizar_zona` |
-| PATCH | `/zonas/{id}` | `desactivar_zona` |
+| PATCH | `/zonas/{id}/desactivar` | `desactivar_zona` |
 
 ## Contrato público
 

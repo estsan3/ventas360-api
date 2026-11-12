@@ -1,9 +1,9 @@
 # auth — login
 
 Fuente: `app/modulos/auth/` · Flujo principal: `POST /api/v1/auth/login`.
-Actualizado: 2026-08-26.
+Actualizado: 2026-11-12.
 
-Valida credenciales, que el Host coincida con el tenant del usuario (o plataforma para `superadmin`) y emite JWT en cookie httpOnly + body.
+Valida credenciales, que el Host coincida con el tenant del usuario (o plataforma para `superadmin`) y emite JWT en cookie httpOnly + body. **No hay commit**: el login no persiste.
 
 ```mermaid
 sequenceDiagram
@@ -37,10 +37,14 @@ sequenceDiagram
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET | `/auth/me` | `obtener_perfil` |
-| POST | `/auth/logout` | `logout` (borra cookie) |
-| GET/POST/DELETE | `/usuarios` | listar / crear / eliminar |
-| GET/POST/DELETE | `/catalogos/vendedores` | vendedores (usuarios rol vendedor) |
+| GET | `/auth/me` | `obtener_perfil` (revalida Host) |
+| POST | `/auth/logout` | `logout` (borra cookie, 204) |
+| GET | `/usuarios` | `listar_usuarios` (módulo `configuracion`) |
+| POST | `/usuarios` | `crear_usuario` |
+| DELETE | `/usuarios/{id}` | `eliminar_usuario` (no auto-baja ni último admin) |
+| GET | `/catalogos/vendedores` | `listar_vendedores` |
+| POST | `/catalogos/vendedores` | `crear_vendedor` |
+| DELETE | `/catalogos/vendedores/{id}` | `eliminar_vendedor` |
 
 ## Contrato público
 

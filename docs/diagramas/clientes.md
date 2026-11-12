@@ -1,9 +1,9 @@
 # clientes — alta
 
 Fuente: `app/modulos/clientes/` · Flujo principal: `POST /api/v1/clientes`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-12.
 
-Valida email único, datos comerciales, vendedor (auth) y zona (IDs débiles).
+Valida email único, datos comerciales, vendedor (auth) y zona (IDs débiles). Permiso de escritura: módulo `clientes`. Lectura también desde `mostrador` y `cta_cte`.
 
 ```mermaid
 sequenceDiagram
@@ -33,10 +33,10 @@ sequenceDiagram
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET | `/clientes` | `listar_clientes` (paginado) |
+| GET | `/clientes` | `listar_clientes` (paginado; query `q`, `activo`) |
 | GET | `/clientes/{id}` | `obtener_cliente` |
 | PUT | `/clientes/{id}` | `actualizar_cliente` |
-| PATCH | `/clientes/{id}` | `desactivar_cliente` |
+| PATCH | `/clientes/{id}/desactivar` | `desactivar_cliente` |
 
 ## Contrato público
 

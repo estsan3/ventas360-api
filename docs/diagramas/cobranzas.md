@@ -1,9 +1,9 @@
 # cobranzas — crear recibo
 
 Fuente: `app/modulos/cobranzas/` · Flujo principal: `POST /api/v1/cobranzas/recibos`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-12.
 
-Valida imputaciones contra comprobantes cobrables (remito/factura), registra **un** haber en CxC (referencia `recibo`) e impacta tesorería **por cada línea de medio**.
+Valida imputaciones contra comprobantes cobrables (remito/factura), registra **un** haber en CxC (referencia `recibo`) e impacta tesorería **por cada línea de medio**. Permiso: módulo `cta_cte`.
 
 Medios: un `medio` + `cheque` opcional, o `medios[]` (efectivo, transferencia, tarjeta, cheque). Si hay más de una línea, el recibo queda `mixto`. Hasta 3 cheques. La suma de medios debe igualar el monto.
 
@@ -53,7 +53,8 @@ sequenceDiagram
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET | `/cobranzas/recibos` | `listar_recibos` |
+| GET | `/cobranzas/recibos` | `listar_recibos` (query `cliente_id`) |
 | GET | `/cobranzas/recibos/{id}` | `obtener_recibo` |
+| POST | `/cobranzas/recibos` | `crear_recibo` |
 
 No hay `contrato.py` de cobranzas: el módulo orquesta a otros.

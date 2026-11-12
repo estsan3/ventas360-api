@@ -1,9 +1,9 @@
 # pagos — pago a proveedor
 
 Fuente: `app/modulos/pagos/` · Flujo principal: `POST /api/v1/pagos`.
-Actualizado: 2026-08-28.
+Actualizado: 2026-11-12.
 
-Espejo de cobranzas. Baja deuda (CxP haber) e impacta tesorería: efectivo → caja, transferencia → banco, cheque de cartera → `entregar_cheque`, cheque propio → `emitir_cheque_propio`.
+Espejo de cobranzas. Baja deuda (CxP haber) e impacta tesorería: efectivo → caja, transferencia → banco, cheque de cartera (`cheque_id`) → `entregar_cheque`, cheque propio → `emitir_cheque_propio`.
 
 La UI vive en Tesorería (`/tesoreria/pagos`). Este módulo API queda suelto.
 
@@ -46,7 +46,7 @@ sequenceDiagram
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET | `/pagos` | `listar_pagos_proveedor` |
+| GET | `/pagos` | `listar_pagos_proveedor` (query `proveedor_id`) |
 | GET | `/pagos/{id}` | `obtener_pago_proveedor` |
 | POST | `/pagos` | `crear_pago_proveedor` |
 
