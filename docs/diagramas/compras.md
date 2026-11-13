@@ -1,11 +1,11 @@
 # compras — ciclo pedido → remito → factura
 
 Fuente: `app/modulos/compras/` · Permiso: módulo `compras` · Prefijo HTTP: `/api/v1/compras`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-13.
 
 El módulo registra **cómo el comercio compra**. Un comprobante es un `pedido_compra`, un `remito_compra` o una `factura_compra`. El catálogo (SKU propio) vive en **productos**; la lista del proveedor vive en **proveedores**. Compras los usa, no los crea.
 
-No hay `contrato.py`: otros módulos no llaman a compras. Stock, CxP, productos y proveedores se consumen por contrato.
+No hay `contrato.py`: otros módulos no llaman a compras por contrato. **ia** lee remitos borrador vía `ComprasDAO` (mismo proceso). Stock, CxP, productos y proveedores se consumen por contrato.
 
 ## Qué hace
 
@@ -13,7 +13,7 @@ No hay `contrato.py`: otros módulos no llaman a compras. Stock, CxP, productos 
 |--------|--------|
 | Pedido de compra (OC) | Compromiso con el proveedor. **No** mueve stock ni CxP. |
 | Emitir pedido | `borrador` → `emitido`. Habilita recepción. |
-| Remito (confirmar) | `stock.ingresar` al depósito. Si tiene `origen_id` de pedido, el pedido pasa a `parcial` o `recibido`. |
+| Remito (confirmar) | `stock.ingresar` al depósito. Si tiene `origen_id` de pedido, el pedido pasa a `parcial` o `recibido`. **No** imputa CxP. |
 | Factura directa (sin origen) | Ingresa stock **y** imputa debe en CxP. |
 | Facturar remito | Crea `factura_compra` confirmada e imputa CxP. **No** vuelve a ingresar stock. |
 | Parsear foto de remito | Extrae líneas (IA o mock). No persiste; el cliente crea el remito después. |
@@ -86,6 +86,7 @@ sequenceDiagram
     participant DAO as ComprasDAO
     participant Prov as ContratoProveedores
     participant Prod as ContratoProductos
+    participant Param as ContratoParametros
     participant Stock as ContratoStock
     participant Cxp as ContratoCxp
     participant Bus as bus_eventos
@@ -95,6 +96,7 @@ sequenceDiagram
     Service->>BO: validar_tipo validar_creacion
     Service->>Prov: existe_proveedor
     Service->>Prod: obtener_producto o lista
+    Service->>Param: obtener_negocio IVA
     Service->>DAO: guardar estado borrador
     Service->>Service: commit
     Service-->>Router: CompraResponse
@@ -116,6 +118,7 @@ sequenceDiagram
     Service->>DAO: pedido parcial o recibido
     Service->>Service: commit
     Service-)Bus: compras.remito_compra.confirmado
+    Note over Cxp: El remito no imputa CxP
 
     Cliente->>Router: POST /compras/{id}/facturar
     Router->>Service: facturar_remito
@@ -144,7 +147,7 @@ Errores de negocio → HTTP **422** (`ReglaDeNegocioViolada`).
 - `ContratoProveedores`: `existe_proveedor`, `obtener_item`
 - `ContratoProductos`: `obtener_producto`, `listar_activos`, `obtener_por_codigo_barras`
 - `ContratoStock`: `ingresar`
-- `ContratoCxp`: `registrar_debe`
+- `ContratoCxp`: `registrar_debe` (solo factura, no remito)
 - `ContratoParametros`: `obtener_negocio` (IVA)
 
 ## Parsear foto de remito
@@ -181,14 +184,3 @@ sequenceDiagram
 `VENTAS360_REMITO_PARSE_MODO`: `mock`, `anthropic` o `auto` (Anthropic si hay API key).
 
 Lista Excel, alta de SKU y vínculo ítem→artículo: ver [proveedores.md](proveedores.md).
-
-## Web (`ventas360-web` · `/compras`)
-
-Misma pantalla, cuatro pestañas (el diseño visual se actualiza aparte):
-
-- **Pedidos de compra** — crear, emitir, recibir (abre remito con `origen_id`)
-- **Remitos y facturas** — confirmar (stock) y facturar (CxP)
-- **Proveedores** — alta y saldo CxP
-- **Listas de precios** — import Excel (no crea catálogo) y dar de alta con SKU propio
-
-Stock → Recepción de remitos confirma con el mismo `POST /compras/{id}/confirmar`.

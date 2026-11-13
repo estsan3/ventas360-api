@@ -1,9 +1,9 @@
 # productos — alta
 
 Fuente: `app/modulos/productos/` · Flujo principal: `POST /api/v1/productos`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-13.
 
-SKU único. Si `stock > 0`, sincroniza el saldo del depósito default vía contrato (misma TX).
+SKU único. Si `stock > 0`, sincroniza el saldo del depósito default vía contrato (misma TX). El `stock` del response se lee siempre de `ContratoStock.saldo_total_articulo`. Escritura: módulo `articulos`. Lectura también desde `mostrador` y `cta_cte`.
 
 ```mermaid
 sequenceDiagram
@@ -34,9 +34,9 @@ sequenceDiagram
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET | `/productos` | `listar_productos` (stock via contrato) |
+| GET | `/productos` | `listar_productos` (paginado; query `q`, `activo`; stock vía contrato) |
 | GET | `/productos/{id}` | `obtener_producto` |
-| PUT | `/productos/{id}` | `actualizar_producto` |
+| PUT | `/productos/{id}` | `actualizar_producto` (si cambia `stock`, re-sincroniza depósito default) |
 
 ## Contrato público
 
