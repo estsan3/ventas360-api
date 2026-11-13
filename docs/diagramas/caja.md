@@ -1,9 +1,11 @@
 # caja — ingreso y cierre
 
 Fuente: `app/modulos/caja/` · Flujos: contrato `registrar_ingreso` (cobranzas), `POST /api/v1/caja/movimientos` y `POST /api/v1/caja/cerrar`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-13.
 
-El contrato es idempotente por referencia y **no commitea**. El alta HTTP exige caja abierta ese día. El cierre compara esperado vs contado en efectivo, cheques y tarjetas.
+El contrato es idempotente por referencia y **no commitea**. El alta HTTP exige caja abierta ese día. El cierre compara esperado vs contado en efectivo, cheques y tarjetas. Permiso HTTP: módulo `compras`.
+
+Hoy el egreso con `cheque_id` consulta `BancosDAO.buscar_valor` en el mismo proceso (sin contrato) para validar el monto, y después llama `ContratoBancos.entregar_cheque`.
 
 ```mermaid
 sequenceDiagram
