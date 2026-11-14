@@ -1,9 +1,11 @@
 # ventas — confirmar remito
 
 Fuente: `app/modulos/ventas/` · Flujo principal: `POST /api/v1/ventas/pedidos/{id}/confirmar-remito`.
-Actualizado: 2026-09-01.
+Actualizado: 2026-11-14.
 
-Egreso de stock + debe en CxC en la **misma transacción**. Luego publica `ventas.remito.confirmado` (hooks locales no-op; otros módulos pueden suscribirse).
+Egreso de stock + debe en CxC en la **misma transacción**. Luego publica `ventas.remito.confirmado` (hooks locales no-op; otros módulos pueden suscribirse). Permiso: módulos `mostrador` o `ventas`.
+
+`PATCH /ventas/pedidos/{id}/estado` con remito → `confirmado` delega a este mismo flujo. Confirmar factura publica `ventas.{tipo}.estado_cambiado`.
 
 ```mermaid
 sequenceDiagram
@@ -76,7 +78,7 @@ sequenceDiagram
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET | `/ventas/pedidos` | `listar_pedidos` |
+| GET | `/ventas/pedidos` | `listar_pedidos` (query `tipo`, `cliente_id`) |
 | GET | `/ventas/pedidos/{id}` | `obtener_pedido` |
 | POST | `/ventas/pedidos` | `crear_pedido` |
 | PATCH | `/ventas/pedidos/{id}/estado` | `cambiar_estado_pedido` |

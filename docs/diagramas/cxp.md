@@ -1,9 +1,9 @@
 # cxp — registrar debe (contrato)
 
-Fuente: `app/modulos/cxp/` · Flujo principal: `ContratoCxp.registrar_debe` (invocado por compras al confirmar/facturar).
-Actualizado: 2026-08-31.
+Fuente: `app/modulos/cxp/` · Flujo principal: `ContratoCxp.registrar_debe` (invocado por **compras al facturar**, no al confirmar remito).
+Actualizado: 2026-11-14.
 
-Sin endpoints de escritura HTTP: el debe lo escribe **compras**. El router solo consulta saldos y estado de cuenta. Idempotente por referencia; sin commit en el contrato.
+Sin endpoints de escritura HTTP: el debe lo escribe **compras** (`factura_compra` directa o `POST /compras/{id}/facturar`). El remito de compra solo mueve stock. El router consulta saldos y estado de cuenta. Idempotente por referencia; sin commit en el contrato. Permiso HTTP: módulo `compras`.
 
 ```mermaid
 sequenceDiagram
@@ -34,7 +34,7 @@ sequenceDiagram
     participant DAO as CxpDAO
     participant BO as CxpBO
 
-    Cliente->>Router: GET /cxp/proveedores/{id}/estado-cuenta
+    Cliente->>Router: GET /cxp/proveedores/{id}
     Router->>Service: estado_cuenta
     Service->>DAO: listar_por_proveedor + totales
     Service->>BO: calcular_saldo debe haber
