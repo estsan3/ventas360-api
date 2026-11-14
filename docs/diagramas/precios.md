@@ -1,9 +1,9 @@
 # precios — upsert artículo en lista
 
 Fuente: `app/modulos/precios/` · Flujo principal: `PUT /api/v1/precios/articulos`.
-Actualizado: 2026-08-26.
+Actualizado: 2026-11-14.
 
-Crea o actualiza el precio de un artículo en una lista. La resolución de venta (lista default → catálogo) la consume **ventas** vía `ContratoPrecios.obtener_precio`.
+Crea o actualiza el precio de un artículo en una lista. La resolución de venta (lista default → catálogo) la consume **ventas** vía `ContratoPrecios.obtener_precio`. Escritura: módulo `articulos`. Lectura también desde `cta_cte`, `mostrador` y `compras`.
 
 ```mermaid
 sequenceDiagram
@@ -39,8 +39,12 @@ Lista default con override → si no, `producto.precio` del catálogo. `cliente_
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET/POST/PUT/PATCH | `/precios/listas` | CRUD listas |
+| GET | `/precios/listas` | `listar_listas_precio` |
+| POST | `/precios/listas` | `crear_lista_precio` |
+| PUT | `/precios/listas/{id}` | `actualizar_lista_precio` |
+| PATCH | `/precios/listas/{id}/desactivar` | `desactivar_lista_precio` |
 | GET | `/precios/listas/{id}/articulos` | `listar_precios_lista` |
+| PUT | `/precios/articulos` | `upsert_precio_articulo` |
 | GET | `/precios/resolver` | `resolver_precio` |
 
 ## Contrato público
