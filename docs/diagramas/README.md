@@ -4,11 +4,13 @@ Cada módulo tiene un diagrama del **flujo principal** (no el CRUD de listar).
 Las capas siguen `router → service → BO + DAO`; el **commit** ocurre solo en el service.
 La comunicación entre módulos es por `contrato.py` (síncrona) o `EventoDominio` (asíncrona).
 
-Prefijo HTTP: `/api/v1`. Actualizado: **2026-09-01**.
+Prefijo HTTP: `/api/v1`. Verificado contra routers, services y contratos: **2026-11-19**.
 
 ## Cómo mantenerlos
 
 Al cambiar `router.py`, `service.py`, `contrato.py` o `eventos.py` de un módulo, actualizar el `.md` correspondiente y la fecha de esta tabla. Si se agrega un módulo, crear `docs/diagramas/<nombre>.md` y una fila acá (ver `AGENTS.md`).
+
+Módulos en `app/main.py` (19): auth, tenants, clientes, zonas, productos, precios, stock, ventas, cxc, cobranzas, proveedores, compras, cxp, pagos, caja, bancos, parametros, reporteria, ia. Sin módulos nuevos desde el sync mergeado en main.
 
 ## Índice
 
