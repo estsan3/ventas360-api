@@ -1,9 +1,11 @@
 # caja — ingreso y cierre
 
 Fuente: `app/modulos/caja/` · Flujos: contrato `registrar_ingreso` (cobranzas), `POST /api/v1/caja/movimientos` y `POST /api/v1/caja/cerrar`.
-Actualizado: 2026-08-31.
+Actualizado: 2026-11-21.
 
-El contrato es idempotente por referencia y **no commitea**. El alta HTTP exige caja abierta ese día. El cierre compara esperado vs contado en efectivo, cheques y tarjetas.
+El contrato es idempotente por referencia y **no commitea**. El alta HTTP exige caja abierta ese día. El cierre compara esperado vs contado en efectivo, cheques y tarjetas. Permiso HTTP: módulo `compras`.
+
+Hoy el egreso con `cheque_id` consulta `BancosDAO.buscar_valor` en el mismo proceso (sin contrato) para validar el monto, y después llama `ContratoBancos.entregar_cheque`.
 
 ```mermaid
 sequenceDiagram
@@ -33,6 +35,7 @@ sequenceDiagram
     participant Service as CajaService
     participant BO as CajaBO
     participant DAO as CajaDAO
+    participant BancosDAO
     participant Bancos as ContratoBancos
 
     Cliente->>Router: POST /caja/movimientos tipo, medio, monto
@@ -43,6 +46,7 @@ sequenceDiagram
     alt medio cheque ingreso
         Service->>Bancos: recibir_cheque en_cartera
     else medio cheque egreso con cheque_id
+        Service->>BancosDAO: buscar_valor
         Service->>Bancos: entregar_cheque
     else medio cheque egreso propio
         Service->>Bancos: emitir_cheque_propio
