@@ -1,9 +1,11 @@
 # ventas — confirmar remito
 
 Fuente: `app/modulos/ventas/` · Flujo principal: `POST /api/v1/ventas/pedidos/{id}/confirmar-remito`.
-Actualizado: 2026-09-01.
+Actualizado: 2026-11-22.
 
-Egreso de stock + debe en CxC en la **misma transacción**. Luego publica `ventas.remito.confirmado` (hooks locales no-op; otros módulos pueden suscribirse).
+Egreso de stock + debe en CxC en la **misma transacción**. Luego publica `ventas.remito.confirmado` (hooks locales no-op; otros módulos pueden suscribirse). Permiso: módulos `mostrador` o `ventas`.
+
+`PATCH /ventas/pedidos/{id}/estado` con remito → `confirmado` delega a este mismo flujo. Confirmar factura publica `ventas.{tipo}.estado_cambiado`.
 
 ```mermaid
 sequenceDiagram
@@ -33,6 +35,35 @@ sequenceDiagram
 ## Crear comprobante (contexto)
 
 `POST /ventas/pedidos`: valida cliente, arma líneas con `ContratoProductos` + `ContratoPrecios`, IVA y número de `ContratoParametros`, commit, evento `ventas.{tipo}.creado`.
+
+```mermaid
+sequenceDiagram
+    participant Cliente
+    participant Router as ventas.router
+    participant Service as VentasService
+    participant BO as VentasBO
+    participant Clientes as ContratoClientes
+    participant Prod as ContratoProductos
+    participant Precios as ContratoPrecios
+    participant Param as ContratoParametros
+    participant DAO as VentasDAO
+    participant Bus as bus_eventos
+
+    Cliente->>Router: POST /ventas/pedidos tipo remito o factura
+    Router->>Service: crear
+    Service->>BO: validar_tipo y validar_creacion
+    Service->>Clientes: existe_cliente
+    Service->>Param: obtener_negocio
+    loop cada linea
+        Service->>Prod: obtener_producto
+        Service->>Precios: obtener_precio articulo, cliente
+    end
+    Service->>Param: asignar_numero tipo
+    Service->>DAO: guardar Pedido borrador
+    Service->>Service: commit
+    Service-)Bus: ventas.tipo.creado
+    Service-->>Router: PedidoResponse
+```
 
 Facturar remito (`POST .../facturar`): si el remito **ya** tiene movimiento CxC, no vuelve a imputar. Evento `ventas.factura.creada`. Si ARCA está habilitada, pide CAE antes de confirmar.
 
@@ -76,12 +107,23 @@ sequenceDiagram
 
 | Método | Ruta | operation_id |
 |--------|------|----------------|
-| GET | `/ventas/pedidos` | `listar_pedidos` |
+| GET | `/ventas/pedidos` | `listar_pedidos` (query `tipo`, `cliente_id`) |
 | GET | `/ventas/pedidos/{id}` | `obtener_pedido` |
 | POST | `/ventas/pedidos` | `crear_pedido` |
 | PATCH | `/ventas/pedidos/{id}/estado` | `cambiar_estado_pedido` |
 | POST | `/ventas/pedidos/{id}/confirmar-remito` | `confirmar_remito` |
 | POST | `/ventas/pedidos/{id}/facturar` | `facturar_remito` |
+
+## Eventos
+
+| Evento | Cuándo |
+|--------|--------|
+| `ventas.{tipo}.creado` | `POST /ventas/pedidos` |
+| `ventas.{tipo}.estado_cambiado` | `PATCH .../estado` (si no delega a confirmar remito) |
+| `ventas.remito.confirmado` | Confirmar remito (stock + CxC) |
+| `ventas.factura.creada` | Facturar remito |
+
+Hooks locales en `eventos.py` son no-op; el stock y CxC ya ocurrieron en la misma TX.
 
 ## Contrato público
 
